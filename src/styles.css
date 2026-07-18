@@ -7,6 +7,7 @@
   --roi: #ffd166;
   --danger: #e07a5f;
   --radius: 14px;
+  --dock-h: 0px;
   font-family: "Avenir Next", "Segoe UI", sans-serif;
 }
 
@@ -17,7 +18,7 @@
 html,
 body {
   margin: 0;
-  min-height: 100%;
+  height: 100%;
   background:
     radial-gradient(1200px 600px at 10% -10%, #2f4a3a 0%, transparent 55%),
     radial-gradient(900px 500px at 100% 0%, #3a3220 0%, transparent 50%),
@@ -25,37 +26,50 @@ body {
   color: var(--ink);
 }
 
+body {
+  overflow: hidden;
+}
+
 #app {
   max-width: 980px;
   margin: 0 auto;
-  padding: 1rem 1rem 2rem;
+  height: 100dvh;
+  height: 100svh;
+  padding:
+    max(0.55rem, env(safe-area-inset-top))
+    max(0.7rem, env(safe-area-inset-right))
+    0
+    max(0.7rem, env(safe-area-inset-left));
   display: grid;
-  gap: 1rem;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0.55rem;
 }
 
 .top h1 {
   margin: 0;
-  font-size: 1.6rem;
+  font-size: 1.15rem;
   letter-spacing: 0.02em;
 }
 
+.top-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .hint {
-  margin: 0.35rem 0 0;
+  margin: 0.25rem 0 0;
   color: var(--muted);
-  font-size: 0.95rem;
-  line-height: 1.35;
+  font-size: 0.85rem;
+  line-height: 1.3;
 }
 
 .stage {
+  min-height: 0;
   display: grid;
-  gap: 0.85rem;
-}
-
-@media (min-width: 820px) {
-  .stage {
-    grid-template-columns: 1.6fr 0.9fr;
-    align-items: start;
-  }
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0.4rem;
 }
 
 .viewport {
@@ -63,7 +77,8 @@ body {
   overflow: hidden;
   border-radius: var(--radius);
   background: #0d1210;
-  aspect-ratio: 3 / 4;
+  min-height: 0;
+  height: 100%;
   touch-action: none;
 }
 
@@ -82,10 +97,10 @@ video,
 
 .roi {
   position: absolute;
-  left: 18%;
-  top: 38%;
-  width: 64%;
-  height: 16%;
+  left: 14%;
+  top: 36%;
+  width: 72%;
+  height: 18%;
   border: 2px solid var(--roi);
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35);
   border-radius: 6px;
@@ -125,6 +140,66 @@ video,
   cursor: nwse-resize;
 }
 
+.status-line {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  min-height: 1.2em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.collect-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  background: color-mix(in srgb, #121815 92%, black);
+  border-top: 1px solid color-mix(in srgb, var(--muted) 28%, transparent);
+  border-radius: 16px 16px 0 0;
+  padding: 0.55rem 0.55rem max(0.65rem, env(safe-area-inset-bottom));
+  display: grid;
+  gap: 0.45rem;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.dock-pending:has(img:not([hidden])) {
+  display: block;
+}
+
+.dock-pending img {
+  display: block;
+  width: 100%;
+  max-height: 52px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #0a0d0b;
+  image-rendering: pixelated;
+}
+
+.dock-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  gap: 0.4rem;
+  align-items: end;
+}
+
+.dock-row.secondary-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.dock-label {
+  min-width: 0;
+}
+
+.dataset-count.compact {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
 .preview-panel {
   background: color-mix(in srgb, var(--panel) 88%, black);
   border-radius: var(--radius);
@@ -150,7 +225,7 @@ video,
 }
 
 .weight {
-  font-size: clamp(2.4rem, 8vw, 3.4rem);
+  font-size: clamp(2rem, 7vw, 3rem);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -162,13 +237,6 @@ video,
   font-size: 0.45em;
   color: var(--muted);
   margin-left: 0.15em;
-}
-
-.status {
-  margin: 0.2rem 0 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-  min-height: 1.3em;
 }
 
 .calib-state {
@@ -196,12 +264,13 @@ button {
   appearance: none;
   border: 0;
   border-radius: 999px;
-  padding: 0.75rem 1.1rem;
+  padding: 0.7rem 0.85rem;
   background: var(--accent);
   color: #102015;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 button.secondary {
@@ -231,7 +300,6 @@ button#btn-live[aria-pressed="true"] {
   align-items: center;
   color: var(--muted);
   font-size: 0.9rem;
-  margin-left: 0.2rem;
 }
 
 .toggle select {
@@ -244,58 +312,56 @@ button#btn-live[aria-pressed="true"] {
   font: inherit;
 }
 
-.dataset {
-  background: color-mix(in srgb, var(--panel) 88%, black);
-  border-radius: var(--radius);
-  padding: 1rem;
-  display: grid;
-  gap: 0.9rem;
-}
-
-.dataset-head h2 {
-  margin: 0;
-  font-size: 1.2rem;
-}
-
-.dataset-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  align-items: end;
-}
-
 .label-field {
   display: grid;
-  gap: 0.25rem;
-  font-size: 0.78rem;
+  gap: 0.2rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
 }
 
 .label-field input {
-  min-width: 7.5rem;
+  width: 100%;
   border: 1px solid color-mix(in srgb, var(--muted) 45%, transparent);
-  background: #121815;
+  background: #0a0d0b;
   color: var(--ink);
   border-radius: 10px;
-  padding: 0.65rem 0.75rem;
+  padding: 0.62rem 0.65rem;
   font-size: 1.05rem;
   font-variant-numeric: tabular-nums;
 }
 
-.dataset-count {
-  margin: 0;
-  color: var(--muted);
-  align-self: center;
+.more-panel {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 30;
+  max-height: min(70dvh, 560px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  background: color-mix(in srgb, #151a17 96%, black);
+  border-radius: 18px 18px 0 0;
+  padding: 0.85rem 0.85rem max(1rem, env(safe-area-inset-bottom));
+  box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.45);
 }
 
-.pending-wrap img {
-  display: block;
-  width: min(100%, 360px);
-  border-radius: 8px;
-  background: #111;
-  image-rendering: pixelated;
+.more-panel[hidden] {
+  display: none;
+}
+
+.more-block {
+  margin-bottom: 0.9rem;
+}
+
+.more-block summary {
+  cursor: pointer;
+  font-weight: 700;
+  margin-bottom: 0.55rem;
+}
+
+.dataset-gallery h2 {
+  margin: 0 0 0.55rem;
+  font-size: 1.05rem;
 }
 
 .sample-list {
@@ -344,4 +410,50 @@ button#btn-live[aria-pressed="true"] {
 .sample-delete {
   padding: 0.35rem 0.55rem;
   font-size: 0.8rem;
+}
+
+@media (min-width: 820px) {
+  body {
+    overflow: auto;
+  }
+
+  #app {
+    height: auto;
+    min-height: 100dvh;
+    padding-bottom: 1rem;
+    grid-template-rows: auto auto auto;
+  }
+
+  .stage {
+    grid-template-columns: 1.5fr 0.9fr;
+    grid-template-rows: none;
+  }
+
+  .viewport {
+    min-height: 520px;
+    height: 60vh;
+  }
+
+  .status-line {
+    grid-column: 1 / -1;
+  }
+
+  .collect-dock {
+    position: static;
+    border-radius: var(--radius);
+    border: 1px solid color-mix(in srgb, var(--muted) 28%, transparent);
+  }
+
+  .more-panel {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+    border-radius: var(--radius);
+    padding: 0.9rem;
+  }
+
+  .more-panel[hidden] {
+    display: grid;
+  }
 }

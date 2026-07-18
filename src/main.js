@@ -13,6 +13,8 @@ const btnClearCalib = document.getElementById("btn-clear-calib");
 const btnRead = document.getElementById("btn-read");
 const btnLive = document.getElementById("btn-live");
 const invertEl = document.getElementById("invert");
+const morePanel = document.getElementById("more-panel");
+const btnToggleMore = document.getElementById("btn-toggle-more");
 
 const reader = new ScaleDigitReader({ samples: 7, invert: null });
 let live = false;
@@ -31,6 +33,13 @@ btnCalibrate.addEventListener("click", calibrate);
 btnClearCalib.addEventListener("click", clearCalibration);
 btnRead.addEventListener("click", () => readOnce());
 btnLive.addEventListener("click", toggleLive);
+btnToggleMore.addEventListener("click", () => {
+  const open = morePanel.hasAttribute("hidden");
+  if (open) morePanel.removeAttribute("hidden");
+  else morePanel.setAttribute("hidden", "");
+  btnToggleMore.setAttribute("aria-expanded", String(open));
+  btnToggleMore.textContent = open ? "Fermer" : "Plus";
+});
 invertEl.addEventListener("change", () => {
   reader.setInvert(invertModeFromUi());
 });
@@ -65,8 +74,7 @@ async function startCamera() {
     btnLive.disabled = false;
     datasetUi.setCameraReady(true);
     await reader.init();
-    statusEl.textContent =
-      "Caméra prête — cadrez les chiffres, puis collectez des exemples annotés ci-dessous.";
+    statusEl.textContent = "Caméra prête — cadrez, puis Capturer / Valeur / OK en bas.";
     updateCalibrationUi();
   } catch (err) {
     console.error(err);

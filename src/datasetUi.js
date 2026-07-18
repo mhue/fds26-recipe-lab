@@ -54,9 +54,9 @@ export function initDatasetUi(deps) {
       pendingImg.src = pending.dataUrl;
       pendingImg.hidden = false;
       btnSave.disabled = false;
-      labelInput.focus();
-      labelInput.select();
-      deps.setStatus("Capture OK — saisissez la valeur affichée sur la balance, puis Enregistrer.");
+      // Sur mobile, ne pas ouvrir le clavier tout de suite : ça cache la zone cadrée.
+      labelInput.focus({ preventScroll: true });
+      deps.setStatus("Capture OK — tapez la valeur, puis OK.");
     } catch (err) {
       console.error(err);
       deps.setStatus("Échec de la capture.");
@@ -81,8 +81,9 @@ export function initDatasetUi(deps) {
       pendingImg.removeAttribute("src");
       btnSave.disabled = true;
       labelInput.value = "";
+      labelInput.blur();
       await refresh();
-      deps.setStatus(`Exemple enregistré (${label}). Variez les poids et chiffres.`);
+      deps.setStatus(`Exemple enregistré (${label}). Recadrez / capturez le suivant.`);
     } catch (err) {
       console.error(err);
       deps.setStatus("Impossible d’enregistrer l’exemple.");
