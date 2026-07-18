@@ -3,9 +3,21 @@
  *
  * Plus fiable que l'OCR généraliste sur ce type d'affichage :
  * on détecte quels segments sont allumés, puis on mappe le motif → chiffre.
+ *
+ * La calibration sur 0.00 (après tare) fige polarité, cases des digits,
+ * position du point décimal et seuil des segments.
  */
 
 /** @typedef {{ x: number, y: number, w: number, h: number }} Rect */
+
+/**
+ * @typedef {object} ScaleCalibration
+ * @property {boolean} inverted
+ * @property {number} segmentThreshold
+ * @property {{ x: number, y: number, w: number, h: number }[]} digits coords normalisées 0–1
+ * @property {number|null} decimalAfter index du digit après lequel placer le point
+ * @property {string} zeroText
+ */
 
 /** Masques standard a,b,c,d,e,f,g (bits 0..6). */
 const DIGIT_MASKS = {
@@ -32,6 +44,9 @@ const SEGMENT_ZONES = [
   { bit: 6, x: 0.28, y: 0.44, w: 0.44, h: 0.12 }, // g middle
 ];
 
+const ZERO_MASK = DIGIT_MASKS[0];
+const DEFAULT_SEGMENT_THRESHOLD = 0.28;
+
 /**
  * @typedef {object} SevenSegResult
  * @property {string} text
@@ -39,31 +54,121 @@ const SEGMENT_ZONES = [
  * @property {number} confidence 0–100
  * @property {Rect[]} digits
  * @property {boolean} inverted
+ * @property {number} segmentThreshold
  */
 
 /**
- * @param {ImageData} imageData pixels RGBA (sera interprété en niveaux de gris)
- * @param {{ forceInvert?: boolean|null, debugCanvas?: HTMLCanvasElement|null }} [options]
+ * @param {ImageData} imageData
+ * @param {{
+ *   forceInvert?: boolean|null,
+ *   calibration?: ScaleCalibration|null,
+ *   debugCanvas?: HTMLCanvasElement|null,
+ * }} [options]
  * @returns {SevenSegResult}
  */
 export function readSevenSegment(imageData, options = {}) {
+  const calibration = options.calibration ?? null;
+
+  if (calibration) {
+    return recognizePolarity(imageData, calibration.inverted, {
+      debugCanvas: options.debugCanvas ?? null,
+      calibration,
+      segmentThreshold: calibration.segmentThreshold,
+    });
+  }
+
   const forceInvert = options.forceInvert;
   const candidates =
     forceInvert === true || forceInvert === false
-      ? [recognizePolarity(imageData, forceInvert, options.debugCanvas)]
+      ? [recognizePolarity(imageData, forceInvert, { debugCanvas: options.debugCanvas ?? null })]
       : [
-          recognizePolarity(imageData, false, null),
-          recognizePolarity(imageData, true, null),
+          recognizePolarity(imageData, false, {}),
+          recognizePolarity(imageData, true, {}),
         ];
 
   candidates.sort((a, b) => scoreResult(b) - scoreResult(a));
   const best = candidates[0];
 
   if (options.debugCanvas && best) {
-    // Relancer la meilleure polarité pour peindre le debug
-    return recognizePolarity(imageData, best.inverted, options.debugCanvas);
+    return recognizePolarity(imageData, best.inverted, {
+      debugCanvas: options.debugCanvas,
+      segmentThreshold: best.segmentThreshold,
+    });
   }
   return best;
+}
+
+/**
+ * Construit une calibration à partir d'une lecture réussie de zéro (tare).
+ * @param {ImageData} imageData
+ * @param {SevenSegResult} result
+ * @returns {ScaleCalibration|null}
+ */
+export function buildCalibrationFromZero(imageData, result) {
+  if (!result?.digits?.length || !isZeroReading(result.text, result.value)) {
+    return null;
+  }
+
+  const { width, height } = imageData;
+  const threshold = tuneThresholdFromZeros(imageData, result);
+  return {
+    inverted: result.inverted,
+    segmentThreshold: threshold,
+    digits: result.digits.map((d) => ({
+      x: d.x / width,
+      y: d.y / height,
+      w: d.w / width,
+      h: d.h / height,
+    })),
+    decimalAfter: decimalIndexFromText(result.text),
+    zeroText: result.text,
+  };
+}
+
+/**
+ * Fusionne plusieurs calibrations (moyenne des cases).
+ * @param {ScaleCalibration[]} items
+ * @returns {ScaleCalibration|null}
+ */
+export function mergeCalibrations(items) {
+  if (!items.length) return null;
+  const digitCount = mode(items.map((c) => c.digits.length));
+  const compatible = items.filter((c) => c.digits.length === digitCount);
+  if (!compatible.length) return null;
+
+  const inverted = mode(compatible.map((c) => (c.inverted ? 1 : 0))) === 1;
+  const decimalAfter = mode(compatible.map((c) => c.decimalAfter ?? -1));
+  const segmentThreshold =
+    compatible.reduce((s, c) => s + c.segmentThreshold, 0) / compatible.length;
+
+  /** @type {{ x: number, y: number, w: number, h: number }[]} */
+  const digits = [];
+  for (let i = 0; i < digitCount; i++) {
+    const xs = compatible.map((c) => c.digits[i]);
+    digits.push({
+      x: avg(xs.map((d) => d.x)),
+      y: avg(xs.map((d) => d.y)),
+      w: avg(xs.map((d) => d.w)),
+      h: avg(xs.map((d) => d.h)),
+    });
+  }
+
+  const zeroText =
+    compatible.find((c) => c.zeroText.includes("."))?.zeroText ?? compatible[0].zeroText;
+
+  return {
+    inverted,
+    segmentThreshold: clamp(segmentThreshold, 0.12, 0.55),
+    digits,
+    decimalAfter: decimalAfter < 0 ? null : decimalAfter,
+    zeroText,
+  };
+}
+
+/** @param {string} text @param {number|null} value */
+export function isZeroReading(text, value) {
+  if (value != null && Math.abs(value) < 1e-6) return true;
+  return /^0+(\.0+)?$/.test(String(text || "").replace(",", "."));
 }
 
 /**
@@ -89,51 +194,65 @@ export function maskToDigit(mask) {
 function scoreResult(result) {
   if (!result?.text) return -1;
   const digits = result.text.replace(".", "").length;
-  return result.confidence * 10 + digits * 20 + (result.value != null ? 50 : 0);
+  let score = result.confidence * 10 + digits * 20 + (result.value != null ? 50 : 0);
+  if (isZeroReading(result.text, result.value)) score += 30;
+  return score;
 }
 
 /**
  * @param {ImageData} source
  * @param {boolean} invert
- * @param {HTMLCanvasElement|null} debugCanvas
+ * @param {{
+ *   debugCanvas?: HTMLCanvasElement|null,
+ *   calibration?: ScaleCalibration|null,
+ *   segmentThreshold?: number,
+ * }} [opts]
  * @returns {SevenSegResult}
  */
-function recognizePolarity(source, invert, debugCanvas) {
+function recognizePolarity(source, invert, opts = {}) {
+  const debugCanvas = opts.debugCanvas ?? null;
+  const calibration = opts.calibration ?? null;
+  const segmentThreshold = opts.segmentThreshold ?? DEFAULT_SEGMENT_THRESHOLD;
   const { width, height } = source;
   const gray = toGray(source);
   const binary = binarizeGray(gray, width, height, invert);
 
-  const content = contentBounds(binary, width, height);
-  if (!content) {
-    return emptyResult(invert);
+  /** @type {Rect[]} */
+  let digits;
+  if (calibration?.digits?.length) {
+    digits = boxesFromCalibration(binary, width, height, calibration);
+  } else {
+    const content = contentBounds(binary, width, height);
+    if (!content) {
+      return emptyResult(invert, segmentThreshold);
+    }
+    const padX = Math.max(1, Math.round(content.w * 0.02));
+    const padY = Math.max(1, Math.round(content.h * 0.04));
+    const crop = {
+      x: Math.max(0, content.x - padX),
+      y: Math.max(0, content.y - padY),
+      w: Math.min(width - Math.max(0, content.x - padX), content.w + padX * 2),
+      h: Math.min(height - Math.max(0, content.y - padY), content.h + padY * 2),
+    };
+    digits = findDigitBoxes(binary, width, height, crop);
   }
 
-  const padX = Math.max(1, Math.round(content.w * 0.02));
-  const padY = Math.max(1, Math.round(content.h * 0.04));
-  const crop = {
-    x: Math.max(0, content.x - padX),
-    y: Math.max(0, content.y - padY),
-    w: Math.min(width - Math.max(0, content.x - padX), content.w + padX * 2),
-    h: Math.min(height - Math.max(0, content.y - padY), content.h + padY * 2),
-  };
-
-  const digits = findDigitBoxes(binary, width, height, crop);
   if (!digits.length) {
-    paintDebug(debugCanvas, binary, width, height, [], invert);
-    return emptyResult(invert);
+    paintDebug(debugCanvas, binary, width, height, [], invert, Boolean(calibration));
+    return emptyResult(invert, segmentThreshold);
   }
 
   /** @type {string[]} */
   const chars = [];
   let confidenceAcc = 0;
   let confidenceN = 0;
+  const forcedDecimal = calibration ? calibration.decimalAfter : null;
 
   for (let i = 0; i < digits.length; i++) {
     const box = digits[i];
-    const { mask, onScores, offScores } = sampleSegments(binary, width, box);
+    const { mask, onScores, offScores } = sampleSegments(binary, width, box, segmentThreshold);
     const { digit, distance } = maskToDigit(mask);
 
-    // Confiance : contraste moyen on/off + pénalité distance
     const onAvg = average(onScores);
     const offAvg = average(offScores);
     const contrast = clamp01(onAvg - offAvg);
@@ -143,7 +262,9 @@ function recognizePolarity(source, invert, debugCanvas) {
 
     if (digit != null) chars.push(digit);
 
-    if (i < digits.length - 1) {
+    if (forcedDecimal != null) {
+      if (i === forcedDecimal) chars.push(".");
+    } else if (i < digits.length - 1) {
       const gap = {
         x: box.x + box.w,
         y: box.y,
@@ -156,17 +277,122 @@ function recognizePolarity(source, invert, debugCanvas) {
     }
   }
 
-  paintDebug(debugCanvas, binary, width, height, digits, invert);
+  paintDebug(debugCanvas, binary, width, height, digits, invert, Boolean(calibration));
 
   const text = chars.join("");
   const value = parseWeightText(text);
   const confidence = confidenceN ? Math.round((confidenceAcc / confidenceN) * 100) : 0;
 
-  return { text, value, confidence, digits, inverted: invert };
+  return { text, value, confidence, digits, inverted: invert, segmentThreshold };
 }
 
-function emptyResult(inverted) {
-  return { text: "", value: null, confidence: 0, digits: [], inverted };
+function emptyResult(inverted, segmentThreshold = DEFAULT_SEGMENT_THRESHOLD) {
+  return {
+    text: "",
+    value: null,
+    confidence: 0,
+    digits: [],
+    inverted,
+    segmentThreshold,
+  };
+}
+
+/**
+ * @param {ImageData} imageData
+ * @param {SevenSegResult} result
+ */
+function tuneThresholdFromZeros(imageData, result) {
+  const gray = toGray(imageData);
+  const binary = binarizeGray(gray, imageData.width, imageData.height, result.inverted);
+  /** @type {number[]} */
+  const onScores = [];
+  /** @type {number[]} */
+  const offScores = [];
+
+  for (const box of result.digits) {
+    for (const zone of SEGMENT_ZONES) {
+      const score = regionInkRatio(binary, imageData.width, {
+        x: box.x + zone.x * box.w,
+        y: box.y + zone.y * box.h,
+        w: zone.w * box.w,
+        h: zone.h * box.h,
+      });
+      const shouldBeOn = Boolean(ZERO_MASK & (1 << zone.bit));
+      if (shouldBeOn) onScores.push(score);
+      else offScores.push(score);
+    }
+  }
+
+  if (!onScores.length) return DEFAULT_SEGMENT_THRESHOLD;
+  const onMin = Math.min(...onScores);
+  const offMax = offScores.length ? Math.max(...offScores) : 0;
+  if (onMin <= offMax) {
+    return clamp((onMin + offMax) / 2, 0.12, 0.55);
+  }
+  return clamp((onMin + offMax) / 2, 0.12, 0.55);
+}
+
+/**
+ * @param {Uint8Array} binary
+ * @param {number} width
+ * @param {number} height
+ * @param {ScaleCalibration} calibration
+ * @returns {Rect[]}
+ */
+function boxesFromCalibration(binary, width, height, calibration) {
+  return calibration.digits.map((norm) => {
+    const rough = {
+      x: Math.round(norm.x * width),
+      y: Math.round(norm.y * height),
+      w: Math.max(4, Math.round(norm.w * width)),
+      h: Math.max(4, Math.round(norm.h * height)),
+    };
+    const padX = Math.max(2, Math.round(rough.w * 0.2));
+    const padY = Math.max(2, Math.round(rough.h * 0.15));
+    const search = {
+      x: clamp(rough.x - padX, 0, width - 1),
+      y: clamp(rough.y - padY, 0, height - 1),
+      w: 0,
+      h: 0,
+    };
+    search.w = Math.min(width - search.x, rough.w + padX * 2);
+    search.h = Math.min(height - search.y, rough.h + padY * 2);
+    return tightenInRect(binary, width, search) ?? rough;
+  });
+}
+
+/**
+ * @param {Uint8Array} binary
+ * @param {number} width
+ * @param {Rect} rect
+ * @returns {Rect|null}
+ */
+function tightenInRect(binary, width, rect) {
+  let minX = rect.x + rect.w;
+  let maxX = rect.x;
+  let minY = rect.y + rect.h;
+  let maxY = rect.y;
+  let found = false;
+  for (let y = rect.y; y < rect.y + rect.h; y++) {
+    for (let x = rect.x; x < rect.x + rect.w; x++) {
+      if (!binary[y * width + x]) continue;
+      found = true;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  if (!found) return null;
+  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+}
+
+/** @param {string} text */
+function decimalIndexFromText(text) {
+  const idx = String(text).indexOf(".");
+  if (idx <= 0) return null;
+  // "0.00" → point après le digit d'index 0
+  return idx - 1;
 }
 
 /** @param {ImageData} imageData */
@@ -184,7 +410,7 @@ function toGray(imageData) {
  * @param {Uint8Array} gray
  * @param {number} width
  * @param {number} height
- * @param {boolean} invert si true, les pixels sombres deviennent ink
+ * @param {boolean} invert
  */
 function binarizeGray(gray, width, height, invert) {
   const hist = new Array(256).fill(0);
@@ -193,12 +419,8 @@ function binarizeGray(gray, width, height, invert) {
   const out = new Uint8Array(gray.length);
   for (let i = 0; i < gray.length; i++) {
     const bright = gray[i] >= threshold;
-    // Par défaut : chiffres clairs (LED) → ink si bright
-    // invert : chiffres sombres (LCD) → ink si sombre
     out[i] = invert ? (bright ? 0 : 1) : bright ? 1 : 0;
   }
-
-  // Si très peu d'encre, polarité probablement mauvaise — on laisse le score trancher.
   return out;
 }
 
@@ -246,7 +468,6 @@ function contentBounds(binary, width, height) {
 }
 
 /**
- * Découpe en colonnes de digits via projection verticale.
  * @param {Uint8Array} binary
  * @param {number} width
  * @param {number} height
@@ -277,7 +498,6 @@ function findDigitBoxes(binary, width, height, crop) {
   }
   if (active != null) runs.push({ start: active, end: proj.length - 1 });
 
-  // Fusionner de tout petits gaps (segments discontinus)
   const merged = [];
   for (const run of runs) {
     const prev = merged[merged.length - 1];
@@ -295,12 +515,8 @@ function findDigitBoxes(binary, width, height, crop) {
 
   for (const run of merged) {
     const w = run.end - run.start + 1;
-    if (w < minDigitW * 0.35) {
-      // Possible point décimal isolé — ignoré ici, détecté dans les gaps
-      continue;
-    }
+    if (w < minDigitW * 0.35) continue;
 
-    // Si une run est très large, découper en digits estimés
     if (w > maxDigitW * 1.35) {
       const estimate = Math.max(2, Math.round(w / (crop.h * 0.55)));
       const slot = w / estimate;
@@ -353,8 +569,9 @@ function tightBox(binary, width, crop, localStart, localEnd) {
  * @param {Uint8Array} binary
  * @param {number} width
  * @param {Rect} box
+ * @param {number} segmentThreshold
  */
-function sampleSegments(binary, width, box) {
+function sampleSegments(binary, width, box, segmentThreshold = DEFAULT_SEGMENT_THRESHOLD) {
   let mask = 0;
   /** @type {number[]} */
   const onScores = [];
@@ -368,8 +585,7 @@ function sampleSegments(binary, width, box) {
       w: zone.w * box.w,
       h: zone.h * box.h,
     });
-    // Seuil relatif : un segment allumé est nettement plus rempli
-    const on = score >= 0.28;
+    const on = score >= segmentThreshold;
     if (on) {
       mask |= 1 << zone.bit;
       onScores.push(score);
@@ -402,7 +618,6 @@ function regionInkRatio(binary, width, rect) {
 }
 
 /**
- * Point décimal : petit blob bas dans le gap entre deux digits.
  * @param {Uint8Array} binary
  * @param {number} width
  * @param {Rect} gap
@@ -432,8 +647,9 @@ function detectDecimalPoint(binary, width, gap) {
  * @param {number} height
  * @param {Rect[]} digits
  * @param {boolean} inverted
+ * @param {boolean} calibrated
  */
-function paintDebug(canvas, binary, width, height, digits, inverted) {
+function paintDebug(canvas, binary, width, height, digits, inverted, calibrated = false) {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   const img = ctx.createImageData(width, height);
@@ -443,20 +659,22 @@ function paintDebug(canvas, binary, width, height, digits, inverted) {
     img.data[i + 3] = 255;
   }
 
-  // Dessiner hors-écran puis scale dans le preview
   const tmp = document.createElement("canvas");
   tmp.width = width;
   tmp.height = height;
   const tctx = tmp.getContext("2d");
   tctx.putImageData(img, 0, 0);
-  tctx.strokeStyle = "#ffd166";
+  tctx.strokeStyle = calibrated ? "#7cb87a" : "#ffd166";
   tctx.lineWidth = Math.max(1, Math.round(Math.min(width, height) * 0.02));
   for (const d of digits) {
     tctx.strokeRect(d.x + 0.5, d.y + 0.5, d.w - 1, d.h - 1);
   }
-  // Indicateur polarité
   tctx.fillStyle = inverted ? "#7cb87a" : "#e07a5f";
   tctx.fillRect(2, 2, 8, 8);
+  if (calibrated) {
+    tctx.fillStyle = "#7cb87a";
+    tctx.fillRect(12, 2, 8, 8);
+  }
 
   ctx.fillStyle = "#111";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -469,7 +687,6 @@ function parseWeightText(text) {
   if (!text) return null;
   const cleaned = text.replace(/[^\d.]/g, "");
   if (!cleaned || cleaned === ".") return null;
-  // Garder un seul point
   const parts = cleaned.split(".");
   const normalized =
     parts.length === 1 ? parts[0] : `${parts[0]}.${parts.slice(1).join("").slice(0, 2)}`;
@@ -493,8 +710,31 @@ function average(arr) {
   return arr.reduce((s, v) => s + v, 0) / arr.length;
 }
 
+function avg(arr) {
+  return average(arr);
+}
+
 function clamp01(v) {
   return Math.min(1, Math.max(0, v));
+}
+
+function clamp(v, min, max) {
+  return Math.min(max, Math.max(min, v));
+}
+
+/** @template T @param {T[]} values */
+function mode(values) {
+  const counts = new Map();
+  for (const v of values) counts.set(v, (counts.get(v) || 0) + 1);
+  let best = values[0];
+  let bestN = 0;
+  for (const [v, n] of counts) {
+    if (n > bestN) {
+      best = v;
+      bestN = n;
+    }
+  }
+  return best;
 }
 
 function fitContain(srcW, srcH, dstW, dstH) {

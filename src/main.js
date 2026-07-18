@@ -1,12 +1,14 @@
 import { ScaleDigitReader } from "./scaleDigitReader.js";
 
 const video = document.getElementById("camera");
-const overlay = document.getElementById("overlay");
 const preview = document.getElementById("preview");
 const roiEl = document.getElementById("roi");
 const weightEl = document.getElementById("weight");
 const statusEl = document.getElementById("status");
+const calibEl = document.getElementById("calib-state");
 const btnStart = document.getElementById("btn-start");
+const btnCalibrate = document.getElementById("btn-calibrate");
+const btnClearCalib = document.getElementById("btn-clear-calib");
 const btnRead = document.getElementById("btn-read");
 const btnLive = document.getElementById("btn-live");
 const invertEl = document.getElementById("invert");
@@ -14,9 +16,10 @@ const invertEl = document.getElementById("invert");
 const reader = new ScaleDigitReader({ samples: 7, invert: null });
 let live = false;
 let liveLoop = 0;
-let stream = null;
 
 btnStart.addEventListener("click", startCamera);
+btnCalibrate.addEventListener("click", calibrate);
+btnClearCalib.addEventListener("click", clearCalibration);
 btnRead.addEventListener("click", () => readOnce());
 btnLive.addEventListener("click", toggleLive);
 invertEl.addEventListener("change", () => {
@@ -31,11 +34,12 @@ function invertModeFromUi() {
 }
 
 setupRoiInteraction(roiEl);
+updateCalibrationUi();
 
 async function startCamera() {
   statusEl.textContent = "Demande d’accès caméra…";
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
+    const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
       video: {
         facingMode: { ideal: "environment" },
@@ -46,14 +50,52 @@ async function startCamera() {
     video.srcObject = stream;
     await video.play();
     btnStart.disabled = true;
+    btnCalibrate.disabled = false;
+    btnClearCalib.disabled = false;
     btnRead.disabled = false;
     btnLive.disabled = false;
     await reader.init();
-    statusEl.textContent = "Prêt — cadrez uniquement les chiffres (7-segments), puis lisez.";
+    statusEl.textContent = reader.isCalibrated()
+      ? "Caméra prête — calibration déjà présente. Sinon : tarez puis calibrez."
+      : "Caméra prête — cadrez les chiffres, tarez (0.00), puis Calibrer.";
+    updateCalibrationUi();
   } catch (err) {
     console.error(err);
     statusEl.textContent = "Impossible d’accéder à la caméra (HTTPS ou localhost requis).";
   }
+}
+
+async function calibrate() {
+  if (!video.videoWidth) {
+    statusEl.textContent = "Vidéo pas encore prête.";
+    return;
+  }
+  setBusy(true);
+  statusEl.textContent = "Calibration sur 0.00… (balance tarée)";
+  try {
+    const result = await reader.calibrateZero(video, getRoiNormalized(), preview);
+    updateCalibrationUi();
+    if (result.ok) {
+      weightEl.textContent = "0";
+      weightEl.classList.add("has-value");
+      statusEl.textContent = `${result.message} · échantillons: ${result.samples.join(" · ")}`;
+    } else {
+      weightEl.textContent = "—";
+      weightEl.classList.remove("has-value");
+      statusEl.textContent = `${result.message} (${result.samples.join(" · ")})`;
+    }
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = "Erreur de calibration.";
+  } finally {
+    setBusy(false);
+  }
+}
+
+function clearCalibration() {
+  reader.clearCalibration();
+  updateCalibrationUi();
+  statusEl.textContent = "Calibration effacée — refaites tare + Calibrer.";
 }
 
 async function readOnce() {
@@ -61,17 +103,16 @@ async function readOnce() {
     statusEl.textContent = "Vidéo pas encore prête.";
     return;
   }
-  btnRead.disabled = true;
+  setBusy(true);
   statusEl.textContent = "Lecture en cours…";
   try {
-    const roi = getRoiNormalized();
-    const result = await reader.read(video, roi, preview);
+    const result = await reader.read(video, getRoiNormalized(), preview);
     showResult(result);
   } catch (err) {
     console.error(err);
     statusEl.textContent = "Erreur de lecture.";
   } finally {
-    if (!live) btnRead.disabled = false;
+    setBusy(false);
   }
 }
 
@@ -84,11 +125,31 @@ function showResult(result) {
   }
   weightEl.textContent = formatWeight(result.grams);
   weightEl.classList.add("has-value");
-  statusEl.textContent = `OK (${result.confidence}%) · ${result.samples.join(" · ")}`;
+  const tag = result.calibrated ? "calibré" : "auto";
+  statusEl.textContent = `OK ${tag} (${result.confidence}%) · ${result.samples.join(" · ")}`;
 }
 
 function formatWeight(value) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function updateCalibrationUi() {
+  if (reader.isCalibrated()) {
+    const cal = reader.getCalibration();
+    calibEl.textContent = `Calibré · ${cal.zeroText} · ${cal.digits.length} digits`;
+    calibEl.dataset.state = "ready";
+  } else {
+    calibEl.textContent = "Non calibré";
+    calibEl.dataset.state = "missing";
+  }
+}
+
+function setBusy(busy) {
+  if (live) return;
+  btnCalibrate.disabled = busy || !video.srcObject;
+  btnClearCalib.disabled = busy || !video.srcObject;
+  btnRead.disabled = busy || !video.srcObject;
+  btnLive.disabled = busy || !video.srcObject;
 }
 
 async function toggleLive() {
@@ -96,6 +157,8 @@ async function toggleLive() {
   btnLive.setAttribute("aria-pressed", String(live));
   btnLive.textContent = live ? "Stop lecture" : "Lecture continue";
   btnRead.disabled = live;
+  btnCalibrate.disabled = live;
+  btnClearCalib.disabled = live;
   if (!live) {
     liveLoop += 1;
     statusEl.textContent = "Lecture continue arrêtée.";

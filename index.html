@@ -10,7 +10,7 @@
     <div id="app">
       <header class="top">
         <h1>Lecture balance</h1>
-        <p class="hint">Cadrez uniquement les chiffres 7-segments de l’écran, puis lancez la lecture.</p>
+        <p class="hint">1. Cadrez les chiffres · 2. Tarez la balance (0.00) · 3. Calibrez · 4. Lisez</p>
       </header>
 
       <section class="stage">
@@ -30,12 +30,15 @@
           <canvas id="preview" width="240" height="80"></canvas>
           <p class="label">Poids lu</p>
           <div id="weight" class="weight">—</div>
+          <p id="calib-state" class="calib-state" data-state="missing">Non calibré</p>
           <p id="status" class="status">Caméra en attente…</p>
         </aside>
       </section>
 
       <footer class="controls">
         <button id="btn-start" type="button">Démarrer la caméra</button>
+        <button id="btn-calibrate" type="button" class="secondary" disabled>Calibrer sur 0.00</button>
+        <button id="btn-clear-calib" type="button" class="ghost" disabled>Effacer calib.</button>
         <button id="btn-read" type="button" disabled>Lire le poids</button>
         <button id="btn-live" type="button" disabled>Lecture continue</button>
         <label class="toggle">

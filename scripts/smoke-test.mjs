@@ -1,5 +1,5 @@
 import { parseWeight, stabilize } from "../src/scaleDigitReader.js";
-import { maskToDigit } from "../src/sevenSegment.js";
+import { isZeroReading, maskToDigit } from "../src/sevenSegment.js";
 
 const asserts = [
   ["123g", 123],
@@ -34,6 +34,11 @@ for (const [mask, digit] of masks) {
     console.error("maskToDigit fail", mask.toString(2), got, digit);
     process.exit(1);
   }
+}
+
+if (!isZeroReading("0.00", 0) || !isZeroReading("0", 0) || isZeroReading("12.3", 12.3)) {
+  console.error("isZeroReading fail");
+  process.exit(1);
 }
 
 console.log("ok");

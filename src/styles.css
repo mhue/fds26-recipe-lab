@@ -171,6 +171,20 @@ video,
   min-height: 1.3em;
 }
 
+.calib-state {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.calib-state[data-state="ready"] {
+  color: var(--accent);
+}
+
+.calib-state[data-state="missing"] {
+  color: var(--danger);
+}
+
 .controls {
   display: flex;
   flex-wrap: wrap;
@@ -188,6 +202,17 @@ button {
   font-weight: 700;
   font-size: 0.95rem;
   cursor: pointer;
+}
+
+button.secondary {
+  background: #d4a84b;
+  color: #1a1408;
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid color-mix(in srgb, var(--muted) 45%, transparent);
 }
 
 button:disabled {
