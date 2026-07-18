@@ -1,4 +1,5 @@
 import { ScaleDigitReader } from "./scaleDigitReader.js";
+import { initDatasetUi } from "./datasetUi.js";
 
 const video = document.getElementById("camera");
 const preview = document.getElementById("preview");
@@ -16,6 +17,14 @@ const invertEl = document.getElementById("invert");
 const reader = new ScaleDigitReader({ samples: 7, invert: null });
 let live = false;
 let liveLoop = 0;
+
+const datasetUi = initDatasetUi({
+  getVideo: () => video,
+  getRoi: () => getRoiNormalized(),
+  setStatus: (msg) => {
+    statusEl.textContent = msg;
+  },
+});
 
 btnStart.addEventListener("click", startCamera);
 btnCalibrate.addEventListener("click", calibrate);
@@ -54,10 +63,10 @@ async function startCamera() {
     btnClearCalib.disabled = false;
     btnRead.disabled = false;
     btnLive.disabled = false;
+    datasetUi.setCameraReady(true);
     await reader.init();
-    statusEl.textContent = reader.isCalibrated()
-      ? "Caméra prête — calibration déjà présente. Sinon : tarez puis calibrez."
-      : "Caméra prête — cadrez les chiffres, tarez (0.00), puis Calibrer.";
+    statusEl.textContent =
+      "Caméra prête — cadrez les chiffres, puis collectez des exemples annotés ci-dessous.";
     updateCalibrationUi();
   } catch (err) {
     console.error(err);

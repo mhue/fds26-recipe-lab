@@ -243,3 +243,105 @@ button#btn-live[aria-pressed="true"] {
   padding: 0.45rem 0.8rem;
   font: inherit;
 }
+
+.dataset {
+  background: color-mix(in srgb, var(--panel) 88%, black);
+  border-radius: var(--radius);
+  padding: 1rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.dataset-head h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.dataset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: end;
+}
+
+.label-field {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.label-field input {
+  min-width: 7.5rem;
+  border: 1px solid color-mix(in srgb, var(--muted) 45%, transparent);
+  background: #121815;
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dataset-count {
+  margin: 0;
+  color: var(--muted);
+  align-self: center;
+}
+
+.pending-wrap img {
+  display: block;
+  width: min(100%, 360px);
+  border-radius: 8px;
+  background: #111;
+  image-rendering: pixelated;
+}
+
+.sample-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.7rem;
+}
+
+.dataset-empty {
+  margin: 0;
+  color: var(--muted);
+  grid-column: 1 / -1;
+}
+
+.sample-card {
+  background: #121815;
+  border-radius: 10px;
+  overflow: hidden;
+  display: grid;
+}
+
+.sample-card img {
+  width: 100%;
+  aspect-ratio: 3 / 1;
+  object-fit: contain;
+  background: #0a0d0b;
+  image-rendering: pixelated;
+}
+
+.sample-meta {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.45rem;
+}
+
+.sample-label {
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--muted) 35%, transparent);
+  background: transparent;
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.sample-delete {
+  padding: 0.35rem 0.55rem;
+  font-size: 0.8rem;
+}

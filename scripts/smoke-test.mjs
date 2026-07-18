@@ -1,5 +1,6 @@
 import { parseWeight, stabilize } from "../src/scaleDigitReader.js";
 import { isZeroReading, maskToDigit } from "../src/sevenSegment.js";
+import { isValidLabel, normalizeLabel } from "../src/datasetStore.js";
 
 const asserts = [
   ["123g", 123],
@@ -38,6 +39,11 @@ for (const [mask, digit] of masks) {
 
 if (!isZeroReading("0.00", 0) || !isZeroReading("0", 0) || isZeroReading("12.3", 12.3)) {
   console.error("isZeroReading fail");
+  process.exit(1);
+}
+
+if (normalizeLabel(" 12,5 g ") !== "12.5" || !isValidLabel("0.00") || isValidLabel("abc")) {
+  console.error("label helpers fail");
   process.exit(1);
 }
 

@@ -10,7 +10,9 @@
     <div id="app">
       <header class="top">
         <h1>Lecture balance</h1>
-        <p class="hint">1. Cadrez les chiffres · 2. Tarez la balance (0.00) · 3. Calibrez · 4. Lisez</p>
+        <p class="hint">
+          La reconnaissance actuelle est fragile : collectez des exemples annotés pour entraîner un modèle.
+        </p>
       </header>
 
       <section class="stage">
@@ -28,7 +30,7 @@
         <aside class="preview-panel">
           <p class="label">Zone analysée</p>
           <canvas id="preview" width="240" height="80"></canvas>
-          <p class="label">Poids lu</p>
+          <p class="label">Poids lu (essai 7-seg)</p>
           <div id="weight" class="weight">—</div>
           <p id="calib-state" class="calib-state" data-state="missing">Non calibré</p>
           <p id="status" class="status">Caméra en attente…</p>
@@ -50,6 +52,41 @@
           </select>
         </label>
       </footer>
+
+      <section class="dataset" aria-labelledby="dataset-title">
+        <div class="dataset-head">
+          <h2 id="dataset-title">Collecte d’exemples</h2>
+          <p class="hint">
+            Cadrez les chiffres, posez un poids, lisez la valeur sur la balance, capturez, annotez.
+            Visez la diversité : 0.00, puis beaucoup de chiffres différents.
+          </p>
+        </div>
+
+        <div class="dataset-actions">
+          <button id="btn-capture" type="button" class="secondary" disabled>Capturer la zone</button>
+          <label class="label-field">
+            Valeur affichée
+            <input
+              id="label-input"
+              type="text"
+              inputmode="decimal"
+              placeholder="ex. 0.00"
+              autocomplete="off"
+            />
+          </label>
+          <button id="btn-save-sample" type="button" disabled>Enregistrer</button>
+          <button id="btn-export-dataset" type="button">Exporter .zip</button>
+          <button id="btn-clear-dataset" type="button" class="ghost">Tout effacer</button>
+          <p class="dataset-count">Exemples : <strong id="dataset-count">0</strong></p>
+        </div>
+
+        <div class="pending-wrap">
+          <p class="label">Dernière capture</p>
+          <img id="pending-preview" alt="Capture en attente d’annotation" hidden />
+        </div>
+
+        <div id="sample-list" class="sample-list"></div>
+      </section>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>
