@@ -324,7 +324,15 @@ async function blobToImageData(blob) {
 
 /**
  * @param {HTMLCanvasElement|null|undefined} canvas
- * @param {{ binary: Uint8Array, width: number, height: number, frame: import('./displayGeometry.js').Rect, slots: import('./displayGeometry.js').Rect[], inverted: boolean }} layout
+ * @param {{
+ *   binary: Uint8Array,
+ *   width: number,
+ *   height: number,
+ *   frame: import('./displayGeometry.js').Rect,
+ *   slots: import('./displayGeometry.js').Rect[],
+ *   inverted: boolean,
+ *   corners?: { x: number, y: number }[],
+ * }} layout
  */
 function paintDebug(canvas, layout) {
   if (!canvas) return;
@@ -342,17 +350,31 @@ function paintDebug(canvas, layout) {
   const tctx = tmp.getContext("2d");
   tctx.putImageData(img, 0, 0);
 
+  // Rectangle redressé (après homographie)
   tctx.strokeStyle = "#4ea1ff";
   tctx.lineWidth = Math.max(2, Math.round(Math.min(width, height) * 0.02));
   tctx.strokeRect(frame.x + 0.5, frame.y + 0.5, frame.w - 1, frame.h - 1);
 
+  // Coins du rectangle cible
+  tctx.fillStyle = "#4ea1ff";
+  const corners = [
+    { x: frame.x, y: frame.y },
+    { x: frame.x + frame.w, y: frame.y },
+    { x: frame.x + frame.w, y: frame.y + frame.h },
+    { x: frame.x, y: frame.y + frame.h },
+  ];
+  for (const p of corners) {
+    tctx.beginPath();
+    tctx.arc(p.x, p.y, Math.max(2, height * 0.04), 0, Math.PI * 2);
+    tctx.fill();
+  }
+
   tctx.strokeStyle = "#7cb87a";
   tctx.lineWidth = Math.max(1, Math.round(Math.min(width, height) * 0.015));
-  for (let i = 0; i < slots.length; i++) {
-    const s = slots[i];
+  for (const s of slots) {
     tctx.strokeRect(s.x + 0.5, s.y + 0.5, s.w - 1, s.h - 1);
   }
-  // Marqueur du point décimal (entre case 5 et 6)
+
   const left = slots[4];
   const right = slots[5];
   const px = Math.round((left.x + left.w + right.x) / 2);

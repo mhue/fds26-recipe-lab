@@ -4,8 +4,9 @@ Module web pour lire les chiffres d’une balance via la caméra du téléphone.
 
 ## Approche (peu d’exemples)
 
-1. Détection du **cadre** de l’afficheur dans la zone jaune
-2. Découpage fixe en **7 cases** : `XXXXX.XX`
+1. Détection des **4 coins** du quadrilatère d’afficheur le plus probable
+2. **Homographie** : redressement vers un rectangle (légère marge / débordement autorisé)
+3. Découpage fixe en **7 cases** : `XXXXX.XX`
    - 5 chiffres avant le point (les premiers peuvent être vides)
    - **toujours 2** chiffres après le point
    - au moins 1 chiffre à gauche

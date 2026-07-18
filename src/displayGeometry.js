@@ -1,37 +1,77 @@
 /**
  * Géométrie d'écran digital de balance :
- * - détection du cadre extérieur de l'afficheur
+ * - détection des 4 sommets du quadrilatère le plus vraisemblable
+ * - homographie (redressement) vers un rectangle
  * - découpage en 7 cases : XXXXX.XX
- *   (5 chiffres avant le point, 2 après — toujours 2 décimales,
- *    au moins 1 chiffre à gauche ; les cases de tête peuvent être vides)
  */
 
 /** @typedef {{ x: number, y: number, w: number, h: number }} Rect */
+/** @typedef {{ x: number, y: number }} Point */
 
 export const SLOT_COUNT = 7;
 export const INT_SLOTS = 5;
 export const FRAC_SLOTS = 2;
 
+const WARP_W = 320;
+const WARP_H = 120;
+
 /**
  * @param {ImageData} imageData
  * @param {{ inverted?: boolean }} [opts]
- * @returns {{ frame: Rect, slots: Rect[], inverted: boolean, binary: Uint8Array, width: number, height: number } | null}
+ * @returns {{
+ *   frame: Rect,
+ *   slots: Rect[],
+ *   inverted: boolean,
+ *   binary: Uint8Array,
+ *   width: number,
+ *   height: number,
+ *   corners: Point[],
+ *   warpedGray: Uint8Array,
+ * } | null}
  */
 export function analyzeDisplay(imageData, opts = {}) {
   const { width, height } = imageData;
   const gray = toGray(imageData);
 
-  const candidates = [];
+  let corners = detectBestQuad(gray, width, height);
+  if (!corners) {
+    const binaryGuess = binarize(gray, width, height, false);
+    const aabb = detectOuterFrame(gray, binaryGuess, width, height);
+    if (!aabb) return null;
+    corners = rectToCorners(aabb);
+  }
+
+  // Autoriser un léger débordement hors du bezel / ROI
+  corners = expandQuad(corners, 1.06);
+  corners = orderCorners(corners);
+
+  const warpedGray = warpPerspectiveGray(gray, width, height, corners, WARP_W, WARP_H);
   const invertOptions =
     opts.inverted === true || opts.inverted === false ? [opts.inverted] : [false, true];
 
+  /** @type {any[]} */
+  const candidates = [];
   for (const inverted of invertOptions) {
-    const binary = binarize(gray, width, height, inverted);
-    const frame = detectOuterFrame(gray, binary, width, height);
-    if (!frame) continue;
+    const binary = binarize(warpedGray, WARP_W, WARP_H, inverted);
+    const frame = {
+      x: Math.round(WARP_W * 0.02),
+      y: Math.round(WARP_H * 0.08),
+      w: Math.round(WARP_W * 0.96),
+      h: Math.round(WARP_H * 0.84),
+    };
     const slots = splitSevenSlots(frame);
-    const score = scoreLayout(binary, width, slots, inverted);
-    candidates.push({ frame, slots, inverted, binary, width, height, score });
+    const score = scoreLayout(binary, WARP_W, slots, inverted);
+    candidates.push({
+      frame,
+      slots,
+      inverted,
+      binary,
+      width: WARP_W,
+      height: WARP_H,
+      corners,
+      warpedGray,
+      score,
+    });
   }
 
   if (!candidates.length) return null;
@@ -44,13 +84,14 @@ export function analyzeDisplay(imageData, opts = {}) {
     binary: best.binary,
     width: best.width,
     height: best.height,
+    corners: best.corners,
+    warpedGray: best.warpedGray,
   };
 }
 
 /**
- * Aligne un label sur 7 cases (droite pour la partie entière, 2 décimales).
  * @param {string} label
- * @returns {(string|null)[] | null} 7 entrées : digit ou null si case vide
+ * @returns {(string|null)[] | null}
  */
 export function labelToSlots(label) {
   const n = normalizeLabel(label);
@@ -74,20 +115,16 @@ export function labelToSlots(label) {
 }
 
 /**
- * Assemble le texte / valeur depuis 7 lectures ('' = vide, '?' = inconnu).
- * @param {string[]} slotDigits length 7
+ * @param {string[]} slotDigits
  */
 export function slotsToReading(slotDigits) {
   const intDigits = slotDigits.slice(0, INT_SLOTS).filter((d) => d && d !== "?");
   const fracDigits = slotDigits.slice(INT_SLOTS);
   const hasUnknown = slotDigits.some((d) => d === "?");
-  // Au moins un chiffre à gauche
   const intText = intDigits.length ? intDigits.join("") : "0";
   const fracText = fracDigits.map((d) => (d && d !== "?" ? d : "0")).join("");
   const text = `${intText}.${fracText}`;
-  if (hasUnknown) {
-    return { text, value: null, ok: false };
-  }
+  if (hasUnknown) return { text, value: null, ok: false };
   const value = Number.parseFloat(text);
   if (!Number.isFinite(value) || value < 0 || value > 100000) {
     return { text, value: null, ok: false };
@@ -96,50 +133,119 @@ export function slotsToReading(slotDigits) {
 }
 
 /**
- * Détecte le cadre extérieur de l'afficheur (rectangle).
+ * Cherche le quadrilatère (4 coins) le plus vraisemblable pour l'afficheur.
  * @param {Uint8Array} gray
- * @param {Uint8Array} binary
  * @param {number} width
  * @param {number} height
- * @returns {Rect|null}
+ * @returns {Point[]|null} TL,TR,BR,BL
  */
-export function detectOuterFrame(gray, binary, width, height) {
-  const byEdges = frameFromEdges(gray, width, height);
-  const byInk = frameFromInk(binary, width, height);
-  const byBorder = frameFromBorderRing(gray, width, height);
+export function detectBestQuad(gray, width, height) {
+  const edges = sobelEdges(gray, width, height);
+  const thr = percentile(edges, 0.82);
+  const bin = new Uint8Array(width * height);
+  for (let i = 0; i < edges.length; i++) bin[i] = edges[i] >= thr ? 1 : 0;
+  dilate(bin, width, height, 1);
 
-  const candidates = [byEdges, byInk, byBorder].filter(Boolean);
-  if (!candidates.length) {
-    return { x: Math.round(width * 0.04), y: Math.round(height * 0.08), w: Math.round(width * 0.92), h: Math.round(height * 0.84) };
+  const contours = findContours(bin, width, height);
+  /** @type {{ corners: Point[], score: number }[]} */
+  const quads = [];
+
+  for (const contour of contours) {
+    if (contour.length < 20) continue;
+    const area = Math.abs(polygonArea(contour));
+    if (area < width * height * 0.08) continue;
+    if (area > width * height * 0.98) continue;
+
+    const peri = perimeter(contour);
+    const approx = approxPolyDP(contour, Math.max(3, peri * 0.03));
+    let corners = approx;
+    if (corners.length > 4) {
+      corners = approxPolyDP(contour, Math.max(4, peri * 0.045));
+    }
+    if (corners.length !== 4) {
+      // Fallback : boîte englobante du contour → 4 coins
+      corners = rectToCorners(boundingRect(contour));
+    } else {
+      corners = orderCorners(corners);
+    }
+
+    const score = scoreQuad(corners, width, height, area);
+    if (score > 0) quads.push({ corners, score });
   }
 
-  // Préférer un cadre assez large, pas trop collé aux digits seuls
-  candidates.sort((a, b) => {
-    const areaA = a.w * a.h;
-    const areaB = b.w * b.h;
-    const aspectA = a.w / Math.max(1, a.h);
-    const aspectB = b.w / Math.max(1, b.h);
-    // Les afficheurs sont plutôt larges
-    const scoreA = areaA * (aspectA > 1.2 ? 1.3 : 1);
-    const scoreB = areaB * (aspectB > 1.2 ? 1.3 : 1);
-    return scoreB - scoreA;
-  });
+  // Candidat axes-alignés (projections) comme filet de sécurité
+  const aabb = frameFromEdges(gray, width, height);
+  if (aabb) {
+    const c = orderCorners(rectToCorners(aabb));
+    quads.push({
+      corners: c,
+      score: scoreQuad(c, width, height, aabb.w * aabb.h) * 0.85,
+    });
+  }
 
-  let frame = candidates[0];
-  // Légère contraction pour rester à l'intérieur du bezel
-  frame = insetRect(frame, 0.03, 0.06, width, height);
-  if (frame.w < width * 0.35 || frame.h < height * 0.25) return null;
-  return frame;
+  if (!quads.length) return null;
+  quads.sort((a, b) => b.score - a.score);
+  return quads[0].corners;
 }
 
 /**
- * 7 cases horizontales dans le cadre ; espace décimal entre les cases 5 et 6 (index 4 et 5).
+ * Homographie + échantillonnage bilinéaire.
+ * @param {Uint8Array} srcGray
+ * @param {number} srcW
+ * @param {number} srcH
+ * @param {Point[]} srcCorners TL,TR,BR,BL
+ * @param {number} dstW
+ * @param {number} dstH
+ */
+export function warpPerspectiveGray(srcGray, srcW, srcH, srcCorners, dstW, dstH) {
+  const dstCorners = [
+    { x: 0, y: 0 },
+    { x: dstW - 1, y: 0 },
+    { x: dstW - 1, y: dstH - 1 },
+    { x: 0, y: dstH - 1 },
+  ];
+  const H = getPerspectiveTransform(srcCorners, dstCorners);
+  const Hinv = invert3x3(H);
+  const out = new Uint8Array(dstW * dstH);
+  for (let y = 0; y < dstH; y++) {
+    for (let x = 0; x < dstW; x++) {
+      const p = applyHomography(Hinv, x, y);
+      out[y * dstW + x] = sampleBilinear(srcGray, srcW, srcH, p.x, p.y);
+    }
+  }
+  return out;
+}
+
+/**
+ * @param {Point[]} corners
+ * @param {number} scale >1 agrandit (débordement)
+ */
+export function expandQuad(corners, scale) {
+  const c = {
+    x: corners.reduce((s, p) => s + p.x, 0) / corners.length,
+    y: corners.reduce((s, p) => s + p.y, 0) / corners.length,
+  };
+  return corners.map((p) => ({
+    x: c.x + (p.x - c.x) * scale,
+    y: c.y + (p.y - c.y) * scale,
+  }));
+}
+
+/** @param {Point[]} pts */
+export function orderCorners(pts) {
+  const sorted = [...pts].sort((a, b) => a.y - b.y || a.x - b.x);
+  const top = sorted.slice(0, 2).sort((a, b) => a.x - b.x);
+  const bot = sorted.slice(2).sort((a, b) => a.x - b.x);
+  return [top[0], top[1], bot[1], bot[0]];
+}
+
+/**
  * @param {Rect} frame
  * @returns {Rect[]}
  */
 export function splitSevenSlots(frame) {
-  const padY = Math.max(1, Math.round(frame.h * 0.08));
-  const gap = Math.max(1, Math.round(frame.w * 0.025)); // place du point
+  const padY = Math.max(1, Math.round(frame.h * 0.1));
+  const gap = Math.max(1, Math.round(frame.w * 0.028));
   const usable = frame.w - gap;
   const slotW = usable / SLOT_COUNT;
   const innerH = Math.max(4, frame.h - padY * 2);
@@ -149,7 +255,7 @@ export function splitSevenSlots(frame) {
   for (let i = 0; i < SLOT_COUNT; i++) {
     const gapBefore = i >= INT_SLOTS ? gap : 0;
     const x = frame.x + gapBefore + i * slotW;
-    const insetX = Math.max(1, Math.round(slotW * 0.08));
+    const insetX = Math.max(1, Math.round(slotW * 0.1));
     slots.push({
       x: Math.round(x + insetX),
       y: frame.y + padY,
@@ -160,12 +266,382 @@ export function splitSevenSlots(frame) {
   return slots;
 }
 
+export function detectOuterFrame(gray, binary, width, height) {
+  const byEdges = frameFromEdges(gray, width, height);
+  const byInk = frameFromInk(binary, width, height);
+  const candidates = [byEdges, byInk].filter(Boolean);
+  if (!candidates.length) {
+    return {
+      x: Math.round(width * 0.03),
+      y: Math.round(height * 0.06),
+      w: Math.round(width * 0.94),
+      h: Math.round(height * 0.88),
+    };
+  }
+  candidates.sort((a, b) => b.w * b.h - a.w * a.h);
+  let frame = candidates[0];
+  // Moins de contraction : le cadre peut déborder un peu
+  frame = insetRect(frame, -0.01, -0.02, width, height);
+  if (frame.w < width * 0.3 || frame.h < height * 0.2) return null;
+  return frame;
+}
+
+/** @param {Rect} rect @returns {Point[]} */
+export function rectToCorners(rect) {
+  return [
+    { x: rect.x, y: rect.y },
+    { x: rect.x + rect.w - 1, y: rect.y },
+    { x: rect.x + rect.w - 1, y: rect.y + rect.h - 1 },
+    { x: rect.x, y: rect.y + rect.h - 1 },
+  ];
+}
+
 /**
- * @param {Uint8Array} gray
+ * @param {Point[]} corners
  * @param {number} width
  * @param {number} height
- * @returns {Rect|null}
+ * @param {number} area
  */
+function scoreQuad(corners, width, height, area) {
+  const ordered = orderCorners(corners);
+  const [tl, tr, br, bl] = ordered;
+  const top = dist(tl, tr);
+  const bottom = dist(bl, br);
+  const left = dist(tl, bl);
+  const right = dist(tr, br);
+  if (top < 8 || bottom < 8 || left < 4 || right < 4) return 0;
+
+  const aspect = ((top + bottom) / 2) / Math.max(1, (left + right) / 2);
+  // Afficheur large
+  if (aspect < 1.2 || aspect > 8) return 0;
+
+  const parallel =
+    1 -
+    Math.min(1, Math.abs(top - bottom) / Math.max(top, bottom)) * 0.5 -
+    Math.min(1, Math.abs(left - right) / Math.max(left, right)) * 0.5;
+
+  const imgArea = width * height;
+  const fill = area / imgArea;
+  // Ni trop petit ni quasi toute l'image
+  if (fill < 0.1 || fill > 0.98) return 0;
+
+  // Pénalité si très hors image (mais un peu hors OK)
+  let outside = 0;
+  for (const p of ordered) {
+    if (p.x < -width * 0.15 || p.y < -height * 0.15) outside += 1;
+    if (p.x > width * 1.15 || p.y > height * 1.15) outside += 1;
+  }
+  if (outside >= 3) return 0;
+
+  return fill * 40 + parallel * 25 + Math.min(aspect, 4) * 5;
+}
+
+function sobelEdges(gray, width, height) {
+  const out = new Float32Array(width * height);
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const i = y * width + x;
+      const gx =
+        -gray[i - width - 1] -
+        2 * gray[i - 1] -
+        gray[i + width - 1] +
+        gray[i - width + 1] +
+        2 * gray[i + 1] +
+        gray[i + width + 1];
+      const gy =
+        -gray[i - width - 1] -
+        2 * gray[i - width] -
+        gray[i - width + 1] +
+        gray[i + width - 1] +
+        2 * gray[i + width] +
+        gray[i + width + 1];
+      out[i] = Math.hypot(gx, gy);
+    }
+  }
+  return out;
+}
+
+/** @param {Float32Array} arr @param {number} p */
+function percentile(arr, p) {
+  const vals = Array.from(arr).filter((v) => v > 0);
+  if (!vals.length) return 1;
+  vals.sort((a, b) => a - b);
+  return vals[Math.min(vals.length - 1, Math.floor(vals.length * p))];
+}
+
+function dilate(bin, width, height, r) {
+  const copy = Uint8Array.from(bin);
+  for (let y = r; y < height - r; y++) {
+    for (let x = r; x < width - r; x++) {
+      if (!copy[y * width + x]) continue;
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          bin[(y + dy) * width + (x + dx)] = 1;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Contours externes simplifiés (suivi de bord).
+ * @param {Uint8Array} bin
+ * @param {number} width
+ * @param {number} height
+ * @returns {Point[][]}
+ */
+function findContours(bin, width, height) {
+  const visited = new Uint8Array(width * height);
+  /** @type {Point[][]} */
+  const contours = [];
+  const dirs = [
+    [1, 0],
+    [1, 1],
+    [0, 1],
+    [-1, 1],
+    [-1, 0],
+    [-1, -1],
+    [0, -1],
+    [1, -1],
+  ];
+
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const i = y * width + x;
+      if (!bin[i] || visited[i]) continue;
+      // Point de bord : voisin fond
+      let isBorder = false;
+      for (const [dx, dy] of dirs) {
+        if (!bin[(y + dy) * width + (x + dx)]) {
+          isBorder = true;
+          break;
+        }
+      }
+      if (!isBorder) continue;
+
+      const contour = traceContour(bin, visited, width, height, x, y, dirs);
+      if (contour.length >= 16) contours.push(contour);
+    }
+  }
+  return contours;
+}
+
+function traceContour(bin, visited, width, height, startX, startY, dirs) {
+  /** @type {Point[]} */
+  const points = [];
+  let x = startX;
+  let y = startY;
+  let dir = 0;
+  for (let step = 0; step < width * height; step++) {
+    const i = y * width + x;
+    if (visited[i] && points.length > 8 && x === startX && y === startY) break;
+    visited[i] = 1;
+    points.push({ x, y });
+    let moved = false;
+    for (let k = 0; k < 8; k++) {
+      const nd = (dir + 6 + k) % 8; // priorité tourner à gauche
+      const nx = x + dirs[nd][0];
+      const ny = y + dirs[nd][1];
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+      if (!bin[ny * width + nx]) continue;
+      x = nx;
+      y = ny;
+      dir = nd;
+      moved = true;
+      break;
+    }
+    if (!moved) break;
+    if (points.length > 8 && x === startX && y === startY) break;
+  }
+  return points;
+}
+
+/** Douglas-Peucker */
+function approxPolyDP(points, epsilon) {
+  if (points.length < 3) return points;
+  let maxD = 0;
+  let idx = 0;
+  const first = points[0];
+  const last = points[points.length - 1];
+  for (let i = 1; i < points.length - 1; i++) {
+    const d = pointLineDistance(points[i], first, last);
+    if (d > maxD) {
+      maxD = d;
+      idx = i;
+    }
+  }
+  if (maxD > epsilon) {
+    const left = approxPolyDP(points.slice(0, idx + 1), epsilon);
+    const right = approxPolyDP(points.slice(idx), epsilon);
+    return left.slice(0, -1).concat(right);
+  }
+  return [first, last];
+}
+
+function pointLineDistance(p, a, b) {
+  const A = p.x - a.x;
+  const B = p.y - a.y;
+  const C = b.x - a.x;
+  const D = b.y - a.y;
+  const dot = A * C + B * D;
+  const len2 = C * C + D * D || 1;
+  const t = Math.max(0, Math.min(1, dot / len2));
+  const xx = a.x + t * C;
+  const yy = a.y + t * D;
+  return Math.hypot(p.x - xx, p.y - yy);
+}
+
+function polygonArea(pts) {
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const j = (i + 1) % pts.length;
+    a += pts[i].x * pts[j].y - pts[j].x * pts[i].y;
+  }
+  return a / 2;
+}
+
+function perimeter(pts) {
+  let p = 0;
+  for (let i = 0; i < pts.length; i++) {
+    p += dist(pts[i], pts[(i + 1) % pts.length]);
+  }
+  return p;
+}
+
+function boundingRect(pts) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of pts) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+}
+
+function dist(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+/**
+ * H mappe src -> dst. Retourne 9 coeffs (row-major), h33=1.
+ * @param {Point[]} src
+ * @param {Point[]} dst
+ */
+export function getPerspectiveTransform(src, dst) {
+  /** @type {number[][]} */
+  const A = [];
+  /** @type {number[]} */
+  const b = [];
+  for (let i = 0; i < 4; i++) {
+    const x = src[i].x;
+    const y = src[i].y;
+    const u = dst[i].x;
+    const v = dst[i].y;
+    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]);
+    b.push(u);
+    A.push([0, 0, 0, x, y, 1, -v * x, -v * y]);
+    b.push(v);
+  }
+  const h8 = solveLinearSystem(A, b);
+  return new Float64Array([h8[0], h8[1], h8[2], h8[3], h8[4], h8[5], h8[6], h8[7], 1]);
+}
+
+/** @param {Float64Array} H @param {number} x @param {number} y */
+function applyHomography(H, x, y) {
+  const w = H[6] * x + H[7] * y + H[8];
+  return {
+    x: (H[0] * x + H[1] * y + H[2]) / w,
+    y: (H[3] * x + H[4] * y + H[5]) / w,
+  };
+}
+
+/** @param {Float64Array} H */
+function invert3x3(H) {
+  const a = H[0];
+  const b = H[1];
+  const c = H[2];
+  const d = H[3];
+  const e = H[4];
+  const f = H[5];
+  const g = H[6];
+  const h = H[7];
+  const i = H[8];
+  const A = e * i - f * h;
+  const B = c * h - b * i;
+  const C = b * f - c * e;
+  const D = f * g - d * i;
+  const E = a * i - c * g;
+  const F = c * d - a * f;
+  const G = d * h - e * g;
+  const Hh = b * g - a * h;
+  const I = a * e - b * d;
+  const det = a * A + b * D + c * G;
+  if (Math.abs(det) < 1e-12) {
+    return new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+  }
+  const invDet = 1 / det;
+  // cofactor transpose
+  return new Float64Array([
+    A * invDet,
+    B * invDet,
+    C * invDet,
+    D * invDet,
+    E * invDet,
+    F * invDet,
+    G * invDet,
+    Hh * invDet,
+    I * invDet,
+  ]);
+}
+
+function sampleBilinear(gray, width, height, x, y) {
+  if (x < 0 || y < 0 || x >= width - 1 || y >= height - 1) {
+    const xi = clamp(Math.round(x), 0, width - 1);
+    const yi = clamp(Math.round(y), 0, height - 1);
+    return gray[yi * width + xi];
+  }
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const fx = x - x0;
+  const fy = y - y0;
+  const i00 = gray[y0 * width + x0];
+  const i10 = gray[y0 * width + x0 + 1];
+  const i01 = gray[(y0 + 1) * width + x0];
+  const i11 = gray[(y0 + 1) * width + x0 + 1];
+  return Math.round(i00 * (1 - fx) * (1 - fy) + i10 * fx * (1 - fy) + i01 * (1 - fx) * fy + i11 * fx * fy);
+}
+
+/** Gaussien naïf / élimination pour Ax=b */
+function solveLinearSystem(A, b) {
+  const n = b.length;
+  /** @type {number[][]} */
+  const M = A.map((row, i) => [...row, b[i]]);
+  for (let col = 0; col < n; col++) {
+    let pivot = col;
+    for (let r = col + 1; r < n; r++) {
+      if (Math.abs(M[r][col]) > Math.abs(M[pivot][col])) pivot = r;
+    }
+    if (Math.abs(M[pivot][col]) < 1e-12) continue;
+    if (pivot !== col) {
+      const tmp = M[col];
+      M[col] = M[pivot];
+      M[pivot] = tmp;
+    }
+    const div = M[col][col];
+    for (let c = col; c <= n; c++) M[col][c] /= div;
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const f = M[r][col];
+      for (let c = col; c <= n; c++) M[r][c] -= f * M[col][c];
+    }
+  }
+  return M.map((row) => row[n]);
+}
+
 function frameFromEdges(gray, width, height) {
   const col = new Float32Array(width);
   const row = new Float32Array(height);
@@ -180,21 +656,14 @@ function frameFromEdges(gray, width, height) {
   }
   smooth1D(col);
   smooth1D(row);
-
   const left = findBorderIndex(col, true);
   const right = findBorderIndex(col, false);
   const top = findBorderIndex(row, true);
   const bottom = findBorderIndex(row, false);
-  if (right - left < width * 0.3 || bottom - top < height * 0.2) return null;
+  if (right - left < width * 0.25 || bottom - top < height * 0.18) return null;
   return { x: left, y: top, w: right - left + 1, h: bottom - top + 1 };
 }
 
-/**
- * Cadre = bounding box de l'encre, expansée (souvent proche de l'afficheur si ROI serré).
- * @param {Uint8Array} binary
- * @param {number} width
- * @param {number} height
- */
 function frameFromInk(binary, width, height) {
   let minX = width;
   let minY = height;
@@ -210,8 +679,8 @@ function frameFromInk(binary, width, height) {
     }
   }
   if (maxX < 0) return null;
-  const padX = Math.round((maxX - minX + 1) * 0.08);
-  const padY = Math.round((maxY - minY + 1) * 0.18);
+  const padX = Math.round((maxX - minX + 1) * 0.1);
+  const padY = Math.round((maxY - minY + 1) * 0.22);
   const x = clamp(minX - padX, 0, width - 1);
   const y = clamp(minY - padY, 0, height - 1);
   const r = clamp(maxX + padX, 0, width - 1);
@@ -219,70 +688,28 @@ function frameFromInk(binary, width, height) {
   return { x, y, w: r - x + 1, h: b - y + 1 };
 }
 
-/**
- * Cherche un anneau de bordure (contraste fort près des bords du ROI).
- * @param {Uint8Array} gray
- * @param {number} width
- * @param {number} height
- */
-function frameFromBorderRing(gray, width, height) {
-  // Moyenne sur bande périphérique vs centre
-  const m = Math.max(2, Math.round(Math.min(width, height) * 0.06));
-  let borderSum = 0;
-  let borderN = 0;
-  let centerSum = 0;
-  let centerN = 0;
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const v = gray[y * width + x];
-      const border = x < m || y < m || x >= width - m || y >= height - m;
-      if (border) {
-        borderSum += v;
-        borderN += 1;
-      } else if (x > width * 0.2 && x < width * 0.8 && y > height * 0.2 && y < height * 0.8) {
-        centerSum += v;
-        centerN += 1;
-      }
-    }
-  }
-  if (!borderN || !centerN) return null;
-  // Si peu de contraste cadre/centre, peu fiable
-  if (Math.abs(borderSum / borderN - centerSum / centerN) < 12) return null;
-  return {
-    x: m,
-    y: m,
-    w: width - 2 * m,
-    h: height - 2 * m,
-  };
-}
-
-/**
- * @param {Float32Array} proj
- * @param {boolean} fromStart
- */
 function findBorderIndex(proj, fromStart) {
   const n = proj.length;
   let sum = 0;
   for (let i = 0; i < n; i++) sum += proj[i];
   const mean = sum / n;
-  const thr = mean * 1.15;
-  const band = Math.max(3, Math.floor(n * 0.4));
-
+  const thr = mean * 1.1;
+  const band = Math.max(3, Math.floor(n * 0.42));
   if (fromStart) {
-    let bestI = Math.floor(n * 0.05);
+    let bestI = Math.floor(n * 0.04);
     let bestV = -1;
     for (let i = 0; i < band; i++) {
-      if (proj[i] > bestV && proj[i] >= thr * 0.7) {
+      if (proj[i] > bestV && proj[i] >= thr * 0.65) {
         bestV = proj[i];
         bestI = i;
       }
     }
     return bestI;
   }
-  let bestI = Math.floor(n * 0.95);
+  let bestI = Math.floor(n * 0.96);
   let bestV = -1;
   for (let i = n - 1; i >= n - band; i--) {
-    if (proj[i] > bestV && proj[i] >= thr * 0.7) {
+    if (proj[i] > bestV && proj[i] >= thr * 0.65) {
       bestV = proj[i];
       bestI = i;
     }
@@ -290,7 +717,6 @@ function findBorderIndex(proj, fromStart) {
   return bestI;
 }
 
-/** @param {Float32Array} arr */
 function smooth1D(arr) {
   const copy = Float32Array.from(arr);
   for (let i = 1; i < arr.length - 1; i++) {
@@ -298,12 +724,6 @@ function smooth1D(arr) {
   }
 }
 
-/**
- * @param {Uint8Array} binary
- * @param {number} width
- * @param {Rect[]} slots
- * @param {boolean} inverted
- */
 function scoreLayout(binary, width, slots, inverted) {
   let inkSlots = 0;
   let totalInk = 0;
@@ -312,18 +732,10 @@ function scoreLayout(binary, width, slots, inverted) {
     totalInk += r;
     if (r > 0.06) inkSlots += 1;
   }
-  // On attend souvent 3–7 cases actives (ex. 0.00 → 3)
   const slotScore = inkSlots >= 3 && inkSlots <= 7 ? 1 : 0.3;
   return slotScore * 10 + totalInk + (inverted ? 0.01 : 0);
 }
 
-/**
- * @param {Rect} rect
- * @param {number} fx
- * @param {number} fy
- * @param {number} width
- * @param {number} height
- */
 function insetRect(rect, fx, fy, width, height) {
   const dx = Math.round(rect.w * fx);
   const dy = Math.round(rect.h * fy);
@@ -338,7 +750,10 @@ export function inkRatio(binary, width, rect) {
   const x0 = Math.max(0, Math.floor(rect.x));
   const y0 = Math.max(0, Math.floor(rect.y));
   const x1 = Math.min(width, Math.ceil(rect.x + rect.w));
-  const y1 = Math.ceil(rect.y + rect.h);
+  const y1 = Math.min(
+    // height unknown — use rect bound only; callers keep rect inside image
+    Math.ceil(rect.y + rect.h),
+  );
   let ink = 0;
   let total = 0;
   for (let y = y0; y < y1; y++) {
