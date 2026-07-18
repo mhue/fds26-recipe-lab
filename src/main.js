@@ -11,7 +11,7 @@ const btnRead = document.getElementById("btn-read");
 const btnLive = document.getElementById("btn-live");
 const invertEl = document.getElementById("invert");
 
-const reader = new ScaleDigitReader({ samples: 5 });
+const reader = new ScaleDigitReader({ samples: 7, invert: null });
 let live = false;
 let liveLoop = 0;
 let stream = null;
@@ -20,8 +20,15 @@ btnStart.addEventListener("click", startCamera);
 btnRead.addEventListener("click", () => readOnce());
 btnLive.addEventListener("click", toggleLive);
 invertEl.addEventListener("change", () => {
-  reader.setInvert(invertEl.checked);
+  reader.setInvert(invertModeFromUi());
 });
+
+function invertModeFromUi() {
+  const mode = invertEl.value;
+  if (mode === "lcd") return true;
+  if (mode === "led") return false;
+  return null;
+}
 
 setupRoiInteraction(roiEl);
 
@@ -38,13 +45,11 @@ async function startCamera() {
     });
     video.srcObject = stream;
     await video.play();
-    statusEl.textContent = "Caméra prête — ajustez le cadre jaune sur les chiffres.";
     btnStart.disabled = true;
     btnRead.disabled = false;
     btnLive.disabled = false;
-    statusEl.textContent += " Chargement OCR…";
     await reader.init();
-    statusEl.textContent = "Prêt. Cadrez les chiffres puis lisez.";
+    statusEl.textContent = "Prêt — cadrez uniquement les chiffres (7-segments), puis lisez.";
   } catch (err) {
     console.error(err);
     statusEl.textContent = "Impossible d’accéder à la caméra (HTTPS ou localhost requis).";
@@ -79,7 +84,7 @@ function showResult(result) {
   }
   weightEl.textContent = formatWeight(result.grams);
   weightEl.classList.add("has-value");
-  statusEl.textContent = `OK · échantillons: ${result.samples.join(" · ")}`;
+  statusEl.textContent = `OK (${result.confidence}%) · ${result.samples.join(" · ")}`;
 }
 
 function formatWeight(value) {

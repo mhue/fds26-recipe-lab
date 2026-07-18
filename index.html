@@ -10,7 +10,7 @@
     <div id="app">
       <header class="top">
         <h1>Lecture balance</h1>
-        <p class="hint">Placez le téléphone face à l’écran, ajustez le cadre sur les chiffres, puis lancez la lecture.</p>
+        <p class="hint">Cadrez uniquement les chiffres 7-segments de l’écran, puis lancez la lecture.</p>
       </header>
 
       <section class="stage">
@@ -39,8 +39,12 @@
         <button id="btn-read" type="button" disabled>Lire le poids</button>
         <button id="btn-live" type="button" disabled>Lecture continue</button>
         <label class="toggle">
-          <input id="invert" type="checkbox" />
-          Inverser (LCD sombre)
+          Polarité
+          <select id="invert">
+            <option value="auto" selected>Auto</option>
+            <option value="led">LED claire</option>
+            <option value="lcd">LCD sombre</option>
+          </select>
         </label>
       </footer>
     </div>
