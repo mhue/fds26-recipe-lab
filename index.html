@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Recipe Lab — lecture balance</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="top">
+        <h1>Lecture balance</h1>
+        <p class="hint">Placez le téléphone face à l’écran, ajustez le cadre sur les chiffres, puis lancez la lecture.</p>
+      </header>
+
+      <section class="stage">
+        <div class="viewport">
+          <video id="camera" playsinline muted autoplay></video>
+          <canvas id="overlay" aria-hidden="true"></canvas>
+          <div id="roi" class="roi" title="Glisser pour déplacer · poignées pour redimensionner">
+            <span class="handle nw" data-handle="nw"></span>
+            <span class="handle ne" data-handle="ne"></span>
+            <span class="handle sw" data-handle="sw"></span>
+            <span class="handle se" data-handle="se"></span>
+          </div>
+        </div>
+
+        <aside class="preview-panel">
+          <p class="label">Zone analysée</p>
+          <canvas id="preview" width="240" height="80"></canvas>
+          <p class="label">Poids lu</p>
+          <div id="weight" class="weight">—</div>
+          <p id="status" class="status">Caméra en attente…</p>
+        </aside>
+      </section>
+
+      <footer class="controls">
+        <button id="btn-start" type="button">Démarrer la caméra</button>
+        <button id="btn-read" type="button" disabled>Lire le poids</button>
+        <button id="btn-live" type="button" disabled>Lecture continue</button>
+        <label class="toggle">
+          <input id="invert" type="checkbox" />
+          Inverser (LCD sombre)
+        </label>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

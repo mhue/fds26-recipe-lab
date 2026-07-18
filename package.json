@@ -1,0 +1,18 @@
+{
+  "name": "recipe-lab",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "test:parse": "node --input-type=module -e \"import { parseWeight, stabilize } from './src/scaleDigitReader.js'; const asserts=[['123g',123],['45,6',45.6],['12.0',12],['abc',null]]; for (const [t,e] of asserts) { const g=parseWeight(t); if (g!==e) { console.error('fail',t,g,e); process.exit(1);} } if (stabilize([10,12,11])!==11) process.exit(1); console.log('ok');\""
+  },
+  "dependencies": {
+    "tesseract.js": "^6.0.1"
+  },
+  "devDependencies": {
+    "vite": "^5.4.21"
+  }
+}
