@@ -184,9 +184,57 @@ video,
   align-items: end;
 }
 
-.dock-row.secondary-row {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.dock-row.read-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: stretch;
+}
+
+.model-state {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.model-state[data-state="ready"] {
+  color: var(--accent);
+}
+
+.model-state[data-state="missing"] {
+  color: var(--danger);
+}
+
+.viewport-readout {
+  position: absolute;
+  left: 0.55rem;
+  bottom: 0.55rem;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.weight-chip {
+  display: inline-block;
+  background: rgba(10, 13, 11, 0.72);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.weight-chip.has-value::after {
+  content: " g";
+  font-size: 0.55em;
+  color: var(--muted);
+}
+
+.dock-pending canvas {
+  display: block;
+  width: 100%;
+  max-height: 52px;
+  border-radius: 8px;
+  background: #0a0d0b;
+  image-rendering: pixelated;
 }
 
 .dock-label {

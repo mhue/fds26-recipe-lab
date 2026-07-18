@@ -1,22 +1,34 @@
-import { ScaleDigitReader } from "./scaleDigitReader.js";
+import { listSamples } from "./datasetStore.js";
 import { initDatasetUi } from "./datasetUi.js";
+import { ScaleDigitReader } from "./scaleDigitReader.js";
+import {
+  clearModel,
+  learnDigitModel,
+  loadModel,
+  recognizeWithModel,
+} from "./templateModel.js";
 
 const video = document.getElementById("camera");
 const preview = document.getElementById("preview");
 const roiEl = document.getElementById("roi");
 const weightEl = document.getElementById("weight");
 const statusEl = document.getElementById("status");
+const modelStateEl = document.getElementById("model-state");
 const calibEl = document.getElementById("calib-state");
 const btnStart = document.getElementById("btn-start");
-const btnCalibrate = document.getElementById("btn-calibrate");
-const btnClearCalib = document.getElementById("btn-clear-calib");
+const btnLearn = document.getElementById("btn-learn");
 const btnRead = document.getElementById("btn-read");
 const btnLive = document.getElementById("btn-live");
+const btnCalibrate = document.getElementById("btn-calibrate");
+const btnClearCalib = document.getElementById("btn-clear-calib");
+const btnClearModel = document.getElementById("btn-clear-model");
 const invertEl = document.getElementById("invert");
 const morePanel = document.getElementById("more-panel");
 const btnToggleMore = document.getElementById("btn-toggle-more");
 
-const reader = new ScaleDigitReader({ samples: 7, invert: null });
+const reader = new ScaleDigitReader({ samples: 5, invert: null });
+/** @type {import('./templateModel.js').DigitModel|null} */
+let digitModel = loadModel();
 let live = false;
 let liveLoop = 0;
 
@@ -29,10 +41,17 @@ const datasetUi = initDatasetUi({
 });
 
 btnStart.addEventListener("click", startCamera);
-btnCalibrate.addEventListener("click", calibrate);
-btnClearCalib.addEventListener("click", clearCalibration);
+btnLearn.addEventListener("click", learnFromDataset);
 btnRead.addEventListener("click", () => readOnce());
 btnLive.addEventListener("click", toggleLive);
+btnCalibrate.addEventListener("click", calibrate);
+btnClearCalib.addEventListener("click", clearCalibration);
+btnClearModel.addEventListener("click", () => {
+  clearModel();
+  digitModel = null;
+  updateModelUi();
+  statusEl.textContent = "Modèle effacé — recliquez Apprendre.";
+});
 btnToggleMore.addEventListener("click", () => {
   const open = morePanel.hasAttribute("hidden");
   if (open) morePanel.removeAttribute("hidden");
@@ -53,6 +72,7 @@ function invertModeFromUi() {
 
 setupRoiInteraction(roiEl);
 updateCalibrationUi();
+updateModelUi();
 
 async function startCamera() {
   statusEl.textContent = "Demande d’accès caméra…";
@@ -68,18 +88,110 @@ async function startCamera() {
     video.srcObject = stream;
     await video.play();
     btnStart.disabled = true;
+    btnLearn.disabled = false;
     btnCalibrate.disabled = false;
     btnClearCalib.disabled = false;
-    btnRead.disabled = false;
-    btnLive.disabled = false;
     datasetUi.setCameraReady(true);
     await reader.init();
-    statusEl.textContent = "Caméra prête — cadrez, puis Capturer / Valeur / OK en bas.";
-    updateCalibrationUi();
+    updateModelUi();
+    statusEl.textContent = digitModel
+      ? "Caméra prête — Lire utilise vos exemples annotés."
+      : "Caméra prête — Apprendre (vos 4 images), puis Lire.";
   } catch (err) {
     console.error(err);
     statusEl.textContent = "Impossible d’accéder à la caméra (HTTPS ou localhost requis).";
   }
+}
+
+async function learnFromDataset() {
+  setBusy(true);
+  statusEl.textContent = "Apprentissage depuis les exemples…";
+  try {
+    const samples = await listSamples();
+    const result = await learnDigitModel(samples);
+    digitModel = result.model;
+    updateModelUi();
+    statusEl.textContent = result.message;
+    if (result.perSample?.length) {
+      console.log("learn per sample:", result.perSample);
+    }
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = "Échec de l’apprentissage.";
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function readOnce() {
+  if (!video.videoWidth) {
+    statusEl.textContent = "Vidéo pas encore prête.";
+    return;
+  }
+  setBusy(true);
+  statusEl.textContent = "Lecture…";
+  try {
+    preview.hidden = false;
+    if (digitModel) {
+      const readings = [];
+      for (let i = 0; i < 5; i++) {
+        const frame = reader.captureRoi(video, getRoiNormalized());
+        const fctx = frame.getContext("2d", { willReadFrequently: true });
+        const data = fctx.getImageData(0, 0, frame.width, frame.height);
+        const one = recognizeWithModel(data, digitModel, i === 4 ? preview : null);
+        readings.push(one);
+        if (i < 4) await wait(35);
+      }
+      showTemplateResult(readings);
+    } else {
+      // Même géométrie 7 cases, sans templates (fallback 7-segments seul)
+      const readings = [];
+      for (let i = 0; i < 5; i++) {
+        const frame = reader.captureRoi(video, getRoiNormalized());
+        const fctx = frame.getContext("2d", { willReadFrequently: true });
+        const data = fctx.getImageData(0, 0, frame.width, frame.height);
+        const one = recognizeWithModel(data, null, i === 4 ? preview : null);
+        readings.push(one);
+        if (i < 4) await wait(35);
+      }
+      showTemplateResult(readings);
+    }
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = "Erreur de lecture.";
+  } finally {
+    setBusy(false);
+  }
+}
+
+/** @param {import('./templateModel.js').TemplateReading[]} readings */
+function showTemplateResult(readings) {
+  const values = readings.map((r) => r.value).filter((v) => v != null);
+  const texts = readings.map((r) => r.text || "?");
+  const last = readings[readings.length - 1];
+  const grams = stabilize(values);
+
+  if (grams == null) {
+    weightEl.textContent = "—";
+    weightEl.classList.remove("has-value");
+    statusEl.textContent = `Non lu · ${texts.join(" · ")}`;
+    return;
+  }
+  weightEl.textContent = formatWeight(grams);
+  weightEl.classList.add("has-value");
+  statusEl.textContent = `XXXXX.XX (${last.confidence}%) · ${texts.join(" · ")}`;
+}
+
+function showSevenSegResult(result) {
+  if (result.grams == null) {
+    weightEl.textContent = "—";
+    weightEl.classList.remove("has-value");
+    statusEl.textContent = `Non lu (${result.samples.join(" · ")})`;
+    return;
+  }
+  weightEl.textContent = formatWeight(result.grams);
+  weightEl.classList.add("has-value");
+  statusEl.textContent = `7-seg (${result.confidence}%) · ${result.samples.join(" · ")}`;
 }
 
 async function calibrate() {
@@ -88,19 +200,12 @@ async function calibrate() {
     return;
   }
   setBusy(true);
-  statusEl.textContent = "Calibration sur 0.00… (balance tarée)";
+  statusEl.textContent = "Calibration 7-seg sur 0.00…";
   try {
+    preview.hidden = false;
     const result = await reader.calibrateZero(video, getRoiNormalized(), preview);
     updateCalibrationUi();
-    if (result.ok) {
-      weightEl.textContent = "0";
-      weightEl.classList.add("has-value");
-      statusEl.textContent = `${result.message} · échantillons: ${result.samples.join(" · ")}`;
-    } else {
-      weightEl.textContent = "—";
-      weightEl.classList.remove("has-value");
-      statusEl.textContent = `${result.message} (${result.samples.join(" · ")})`;
-    }
+    statusEl.textContent = result.message;
   } catch (err) {
     console.error(err);
     statusEl.textContent = "Erreur de calibration.";
@@ -112,80 +217,79 @@ async function calibrate() {
 function clearCalibration() {
   reader.clearCalibration();
   updateCalibrationUi();
-  statusEl.textContent = "Calibration effacée — refaites tare + Calibrer.";
-}
-
-async function readOnce() {
-  if (!video.videoWidth) {
-    statusEl.textContent = "Vidéo pas encore prête.";
-    return;
-  }
-  setBusy(true);
-  statusEl.textContent = "Lecture en cours…";
-  try {
-    const result = await reader.read(video, getRoiNormalized(), preview);
-    showResult(result);
-  } catch (err) {
-    console.error(err);
-    statusEl.textContent = "Erreur de lecture.";
-  } finally {
-    setBusy(false);
-  }
-}
-
-function showResult(result) {
-  if (result.grams == null) {
-    weightEl.textContent = "—";
-    weightEl.classList.remove("has-value");
-    statusEl.textContent = `Non lu (${result.samples.join(" · ")})`;
-    return;
-  }
-  weightEl.textContent = formatWeight(result.grams);
-  weightEl.classList.add("has-value");
-  const tag = result.calibrated ? "calibré" : "auto";
-  statusEl.textContent = `OK ${tag} (${result.confidence}%) · ${result.samples.join(" · ")}`;
+  statusEl.textContent = "Calibration 7-seg effacée.";
 }
 
 function formatWeight(value) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
+/** @param {number[]} values */
+function stabilize(values) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    return Math.round(((sorted[mid - 1] + sorted[mid]) / 2) * 10) / 10;
+  }
+  return sorted[mid];
+}
+
+function updateModelUi() {
+  const hasCam = Boolean(video.srcObject);
+  btnRead.disabled = !hasCam;
+  btnLive.disabled = !hasCam;
+  btnLearn.disabled = !hasCam;
+
+  if (digitModel) {
+    modelStateEl.textContent = `Modèle XXXXX.XX · ${digitModel.coveredDigits.join("")} (${digitModel.sampleCount} ex.)`;
+    modelStateEl.dataset.state = "ready";
+  } else {
+    modelStateEl.textContent = "Modèle : non appris — cliquez Apprendre";
+    modelStateEl.dataset.state = "missing";
+  }
+}
+
 function updateCalibrationUi() {
+  if (!calibEl) return;
   if (reader.isCalibrated()) {
     const cal = reader.getCalibration();
-    calibEl.textContent = `Calibré · ${cal.zeroText} · ${cal.digits.length} digits`;
+    calibEl.textContent = `Calibration 7-seg : ${cal.zeroText}`;
     calibEl.dataset.state = "ready";
   } else {
-    calibEl.textContent = "Non calibré";
+    calibEl.textContent = "Calibration 7-seg : non";
     calibEl.dataset.state = "missing";
   }
 }
 
 function setBusy(busy) {
   if (live) return;
-  btnCalibrate.disabled = busy || !video.srcObject;
-  btnClearCalib.disabled = busy || !video.srcObject;
-  btnRead.disabled = busy || !video.srcObject;
-  btnLive.disabled = busy || !video.srcObject;
+  const hasCam = Boolean(video.srcObject);
+  btnLearn.disabled = busy || !hasCam;
+  btnRead.disabled = busy || !hasCam;
+  btnLive.disabled = busy || !hasCam;
+  btnCalibrate.disabled = busy || !hasCam;
+  btnClearCalib.disabled = busy || !hasCam;
 }
 
 async function toggleLive() {
   live = !live;
   btnLive.setAttribute("aria-pressed", String(live));
-  btnLive.textContent = live ? "Stop lecture" : "Lecture continue";
+  btnLive.textContent = live ? "Stop" : "Live";
   btnRead.disabled = live;
+  btnLearn.disabled = live;
   btnCalibrate.disabled = live;
-  btnClearCalib.disabled = live;
   if (!live) {
     liveLoop += 1;
-    statusEl.textContent = "Lecture continue arrêtée.";
+    statusEl.textContent = "Live arrêté.";
+    updateModelUi();
     return;
   }
   const token = ++liveLoop;
-  statusEl.textContent = "Lecture continue…";
+  statusEl.textContent = "Live…";
   while (live && token === liveLoop) {
     await readOnce();
-    await wait(400);
+    await wait(350);
   }
 }
 

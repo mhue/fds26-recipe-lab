@@ -1,52 +1,31 @@
 # Recipe Lab — lecture balance
 
-Module web pour lire / collecter les chiffres digitaux d’une balance cuisine via la caméra du téléphone.
+Module web pour lire les chiffres d’une balance via la caméra du téléphone.
 
-## Approche actuelle
+## Approche (peu d’exemples)
 
-La reconnaissance 7-segments + calibration reste disponible pour essais, mais n’est pas assez fiable sur toutes les balances.
+1. Détection du **cadre** de l’afficheur dans la zone jaune
+2. Découpage fixe en **7 cases** : `XXXXX.XX`
+   - 5 chiffres avant le point (les premiers peuvent être vides)
+   - **toujours 2** chiffres après le point
+   - au moins 1 chiffre à gauche
+3. Apprentissage des glyphes à partir de vos captures annotées
+4. Lecture live = comparaison aux templates (+ secours 7-segments)
 
-**Piste prioritaire :** collecter des exemples annotés (image de l’écran + valeur lue), puis entraîner un petit réseau de neurones.
+## Mode d’emploi
 
-## Collecte d’exemples (recommandé)
+1. `npm install && npm run dev` → ouvrir l’URL HTTPS sur le téléphone
+2. Cadrez **tout l’écran digital** (pas seulement 2–3 chiffres)
+3. Capturer / annoter quelques valeurs → **Apprendre** → **Lire**
 
-1. `npm install && npm run dev`
-2. Ouvrir l’URL HTTPS sur le téléphone (même Wi‑Fi)
-3. Démarrer la caméra, cadrer **uniquement les chiffres**
-4. Pour chaque exemple :
-   - mettre un poids (ou tare `0.00`)
-   - lire la valeur sur la balance
-   - **Capturer la zone**
-   - saisir la valeur → **Enregistrer**
-5. Visez la diversité : `0.00`, puis beaucoup de chiffres/différentes longueurs, éclairages proches du stand
-6. **Exporter .zip** quand vous avez une cinquantaine d’exemples (plus = mieux)
-
-### Contenu du ZIP
-
-```
-images/sample_0001.png
-...
-labels.csv
-manifest.json
-```
-
-`labels.csv` : `filename,label,width,height,captured_at`  
-Le label est la valeur affichée (`0.00`, `125.4`, …).
-
-Les exemples sont aussi stockés localement dans le navigateur (IndexedDB) jusqu’à export / effacement.
-
-## Essais 7-segments (optionnel)
-
-1. Cadrez les chiffres
-2. Tarez (`0.00`) → **Calibrer sur 0.00**
-3. **Lire le poids**
+L’aperçu montre le cadre (bleu), les 7 cases (vert) et le point décimal (jaune).
 
 ## Modules
 
-- `src/datasetStore.js` / `src/datasetUi.js` — collecte + export
-- `src/sevenSegment.js` / `src/scaleDigitReader.js` — tentative lecture 7-segments
+- `src/templateModel.js` — apprentissage + reconnaissance par templates
+- `src/datasetStore.js` / `src/datasetUi.js` — collecte / export ZIP
+- `src/sevenSegment.js` — fallback / options avancées
 
-## Suite
+## Astuce
 
-- Entraîner un classifieur / régresseur sur le dataset exporté
-- Intégrer le modèle (ONNX / TF.js) dans l’app téléphone
+Si un chiffre manque (ex. jamais de `7` dans vos 4 images), le fallback 7-segments tente de le lire. Ajouter 1–2 exemples qui contiennent ce chiffre améliore beaucoup le résultat.

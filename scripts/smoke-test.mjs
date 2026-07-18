@@ -1,6 +1,7 @@
 import { parseWeight, stabilize } from "../src/scaleDigitReader.js";
 import { isZeroReading, maskToDigit } from "../src/sevenSegment.js";
 import { isValidLabel, normalizeLabel } from "../src/datasetStore.js";
+import { labelToSlots, slotsToReading } from "../src/displayGeometry.js";
 
 const asserts = [
   ["123g", 123],
@@ -44,6 +45,22 @@ if (!isZeroReading("0.00", 0) || !isZeroReading("0", 0) || isZeroReading("12.3",
 
 if (normalizeLabel(" 12,5 g ") !== "12.5" || !isValidLabel("0.00") || isValidLabel("abc")) {
   console.error("label helpers fail");
+  process.exit(1);
+}
+
+const slots = labelToSlots("12.5");
+if (!slots || slots.join("|") !== "|||1|2|5|0") {
+  console.error("labelToSlots fail", slots);
+  process.exit(1);
+}
+const zeroSlots = labelToSlots("0.00");
+if (!zeroSlots || zeroSlots.join("|") !== "||||0|0|0") {
+  console.error("labelToSlots zero fail", zeroSlots);
+  process.exit(1);
+}
+const reading = slotsToReading(["", "", "", "1", "2", "5", "0"]);
+if (reading.text !== "12.50" || reading.value !== 12.5) {
+  console.error("slotsToReading fail", reading);
   process.exit(1);
 }
 
