@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Assiette Lab — lecture balance</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="top">
+        <div class="top-row">
+          <h1>Lecture balance</h1>
+          <p class="dataset-count compact">
+            <a href="/" style="color: inherit; margin-right: 0.6rem">← Jeu</a>
+            Ex. <strong id="dataset-count">0</strong>
+          </p>
+        </div>
+        <p class="hint">
+          Cadrez tout l’afficheur · format fixe XXXXX.XX · Apprendre puis Lire · recopiez aussi les grammes à la main dans le défi
+        </p>
+        <p id="model-state" class="model-state" data-state="missing">Modèle : non appris</p>
+      </header>
+
+      <section class="stage">
+        <div class="viewport">
+          <video id="camera" playsinline muted autoplay></video>
+          <canvas id="overlay" aria-hidden="true"></canvas>
+          <div id="roi" class="roi" title="Glisser pour déplacer · poignées pour redimensionner">
+            <span class="handle nw" data-handle="nw"></span>
+            <span class="handle ne" data-handle="ne"></span>
+            <span class="handle sw" data-handle="sw"></span>
+            <span class="handle se" data-handle="se"></span>
+          </div>
+          <div class="viewport-readout">
+            <span id="weight" class="weight-chip">—</span>
+          </div>
+        </div>
+
+        <p id="status" class="status status-line">Caméra en attente…</p>
+      </section>
+
+      <aside class="collect-dock" aria-label="Collecte et lecture">
+        <div class="dock-pending">
+          <img id="pending-preview" alt="Capture en attente" hidden />
+          <canvas id="preview" width="240" height="64" hidden></canvas>
+        </div>
+        <div class="dock-row read-row">
+          <button id="btn-start" type="button">Caméra</button>
+          <button id="btn-learn" type="button" class="secondary" disabled>Apprendre</button>
+          <button id="btn-read" type="button" disabled>Lire</button>
+          <button id="btn-live" type="button" disabled>Live</button>
+        </div>
+        <div class="dock-row">
+          <button id="btn-capture" type="button" class="ghost" disabled>Capturer</button>
+          <label class="label-field dock-label">
+            Valeur
+            <input
+              id="label-input"
+              type="text"
+              inputmode="decimal"
+              placeholder="0.00"
+              autocomplete="off"
+            />
+          </label>
+          <button id="btn-save-sample" type="button" class="ghost" disabled>OK</button>
+        </div>
+        <div class="dock-row secondary-row">
+          <button id="btn-export-dataset" type="button" class="ghost">Exporter</button>
+          <button id="btn-clear-dataset" type="button" class="ghost">Effacer ex.</button>
+          <button id="btn-toggle-more" type="button" class="ghost" aria-expanded="false" aria-controls="more-panel">
+            Plus
+          </button>
+        </div>
+      </aside>
+
+      <section id="more-panel" class="more-panel" hidden>
+        <details class="more-block">
+          <summary>Options avancées (7-segments)</summary>
+          <p id="calib-state" class="calib-state" data-state="missing">Calibration 7-seg : non</p>
+          <div class="controls">
+            <button id="btn-calibrate" type="button" class="secondary" disabled>Calibrer 0.00</button>
+            <button id="btn-clear-calib" type="button" class="ghost" disabled>Effacer calib.</button>
+            <button id="btn-clear-model" type="button" class="ghost">Effacer modèle</button>
+            <label class="toggle">
+              Polarité
+              <select id="invert">
+                <option value="auto" selected>Auto</option>
+                <option value="led">LED claire</option>
+                <option value="lcd">LCD sombre</option>
+              </select>
+            </label>
+          </div>
+        </details>
+
+        <div class="dataset-gallery">
+          <h2>Exemples collectés</h2>
+          <div id="sample-list" class="sample-list"></div>
+        </div>
+      </section>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

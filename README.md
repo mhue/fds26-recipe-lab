@@ -1,32 +1,68 @@
-# Recipe Lab — lecture balance
+# Assiette Lab — défi repas (Fête de la science)
 
-Module web pour lire les chiffres d’une balance via la caméra du téléphone.
+Application web pour composer un **repas de midi**, **peser** les aliments et découvrir la somme de **CO₂** (Agribalyse® ADEME) et de **calories**. Conçue pour des élèves du **CP au CM2**, en défi entre petites équipes.
 
-## Approche (peu d’exemples)
+## Démarrer
 
-1. Détection des **4 coins** du quadrilatère d’afficheur le plus probable
-2. **Homographie** : redressement vers un rectangle (légère marge / débordement autorisé)
-3. Découpage fixe en **7 cases** : `XXXXX.XX`
-   - 5 chiffres avant le point (les premiers peuvent être vides)
-   - **toujours 2** chiffres après le point
-   - au moins 1 chiffre à gauche
-3. Apprentissage des glyphes à partir de vos captures annotées
-4. Lecture live = comparaison aux templates (+ secours 7-segments)
+```bash
+npm install
+npm run dev
+```
 
-## Mode d’emploi
+Ouvrir l’URL affichée (HTTPS) sur tablette / téléphone.
 
-1. `npm install && npm run dev` → ouvrir l’URL HTTPS sur le téléphone
-2. Cadrez **tout l’écran digital** (pas seulement 2–3 chiffres)
-3. Capturer / annoter quelques valeurs → **Apprendre** → **Lire**
+- `/` — jeu **Assiette Lab**
+- `/balance.html` — module caméra pour lire l’afficheur d’une balance (optionnel)
 
-L’aperçu montre le cadre (bleu), les 7 cases (vert) et le point décimal (jaune).
+## Déroulement du jeu
 
-## Modules
+1. Choisir le **niveau** (CP–CE1 / CE2–CM1 / CM2) et le type de défi
+2. Nommer l’**équipe**
+3. Composer une assiette complète : féculent + protéine + légume + fruit
+4. **Peser** chaque aliment sur une balance et saisir les grammes (pavé numérique)
+5. Voir le total **CO₂e** + **kcal**, puis le **classement**
 
-- `src/templateModel.js` — apprentissage + reconnaissance par templates
-- `src/datasetStore.js` / `src/datasetUi.js` — collecte / export ZIP
-- `src/sevenSegment.js` — fallback / options avancées
+### Deux défis
 
-## Astuce
+| Défi | Objectif |
+|------|----------|
+| **Planète** | Minimiser le CO₂ du repas |
+| **Énergie** | Approcher la cible calories (≈ 500–600 kcal) |
 
-Si un chiffre manque (ex. jamais de `7` dans vos 4 images), le fallback 7-segments tente de le lire. Ajouter 1–2 exemples qui contiennent ce chiffre améliore beaucoup le résultat.
+Les scores sont stockés dans le navigateur (`localStorage`) pour animer un challenge sur un stand.
+
+## Données
+
+- **CO₂** : indicateurs *Changement climatique* d’[Agribalyse®](https://agribalyse.ademe.fr/app) (ADEME), en kg CO₂e / kg d’aliment
+- **Calories** : valeurs type CIQUAL (indicatives, pour le jeu)
+
+Le catalogue est dans `src/game/foods.js` (codes CIQUAL + références Agribalyse).
+
+## Nutri-Score & Yuka
+
+L’atelier **Nutri-Score** explique où trouver la lettre A→E sur les emballages, ce qu’elle signifie, avec un mini-quiz. Un encart oriente vers [Yuka](https://yuka.io/) pour un scan code-barres encadré par un adulte.
+
+> Nutri-Score = nutrition · Agribalyse = climat — deux lectures complémentaires.
+
+## Balance connectée (ou non)
+
+Pour le stand, le plus simple est une **balance de cuisine classique** : les enfants lisent l’écran et tapent les grammes dans l’appli.
+
+Le module `/balance.html` permet d’entraîner une lecture par caméra (apprentissage de templates) si vous voulez expérimenter une balance « connectée » via le téléphone.
+
+## Structure
+
+```
+src/game/foods.js      catalogue Agribalyse + kcal
+src/game/teams.js      scores / classement local
+src/game/nutriscore.js atelier pédagogique
+src/game/gameApp.js    parcours du jeu
+src/game/game.css      interface
+balance.html           lecteur d’afficheur (caméra)
+```
+
+## Tests
+
+```bash
+npm test
+```

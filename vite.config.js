@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import basicSsl from "@vitejs/plugin-basic-ssl";
 
@@ -10,5 +11,13 @@ export default defineConfig({
   preview: {
     host: true,
     https: true,
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(import.meta.dirname, "index.html"),
+        balance: resolve(import.meta.dirname, "balance.html"),
+      },
+    },
   },
 });
