@@ -16,7 +16,6 @@
  * @property {number} kcalPer100g
  * @property {FoodCategory} category
  * @property {string} hue
- * @property {('cp'|'ce'|'cm')[]} levels
  * @property {string} tip
  */
 
@@ -31,7 +30,6 @@ export const FOODS = [
     kcalPer100g: 255,
     category: "feculent",
     hue: "#c4a574",
-    levels: ["cp", "ce", "cm"],
     tip: "Le pain a un impact assez bas pour un féculent.",
   },
   {
@@ -43,7 +41,6 @@ export const FOODS = [
     kcalPer100g: 350,
     category: "feculent",
     hue: "#e8c547",
-    levels: ["cp", "ce", "cm"],
     tip: "Peser les pâtes sèches, ou diviser par ~2,5 si cuites.",
   },
   {
@@ -55,7 +52,6 @@ export const FOODS = [
     kcalPer100g: 350,
     category: "feculent",
     hue: "#f0e6d2",
-    levels: ["ce", "cm"],
     tip: "Le riz a un impact proche des pâtes.",
   },
   {
@@ -67,7 +63,6 @@ export const FOODS = [
     kcalPer100g: 80,
     category: "feculent",
     hue: "#d4b483",
-    levels: ["cp", "ce", "cm"],
     tip: "Un féculent local souvent très doux pour le climat.",
   },
   {
@@ -79,7 +74,6 @@ export const FOODS = [
     kcalPer100g: 110,
     category: "proteine",
     hue: "#e8a07a",
-    levels: ["cp", "ce", "cm"],
     tip: "Moins de CO₂ que le bœuf, plus que les lentilles.",
   },
   {
@@ -91,7 +85,6 @@ export const FOODS = [
     kcalPer100g: 220,
     category: "proteine",
     hue: "#a63d40",
-    levels: ["ce", "cm"],
     tip: "Très fort impact climat : à comparer avec le poulet ou les lentilles.",
   },
   {
@@ -103,7 +96,6 @@ export const FOODS = [
     kcalPer100g: 120,
     category: "proteine",
     hue: "#d4787a",
-    levels: ["cp", "ce", "cm"],
     tip: "Comme beaucoup de viandes, son impact est élevé.",
   },
   {
@@ -115,7 +107,6 @@ export const FOODS = [
     kcalPer100g: 140,
     category: "proteine",
     hue: "#f2d27a",
-    levels: ["cp", "ce", "cm"],
     tip: "Bonne protéine avec un impact moyen.",
   },
   {
@@ -127,7 +118,6 @@ export const FOODS = [
     kcalPer100g: 200,
     category: "proteine",
     hue: "#e07a5f",
-    levels: ["cm"],
     tip: "Poisson : impact proche du poulet.",
   },
   {
@@ -139,7 +129,6 @@ export const FOODS = [
     kcalPer100g: 115,
     category: "proteine",
     hue: "#7a5c45",
-    levels: ["cp", "ce", "cm"],
     tip: "Championnes du défi climat parmi les protéines !",
   },
   {
@@ -151,7 +140,6 @@ export const FOODS = [
     kcalPer100g: 160,
     category: "proteine",
     hue: "#c9a66b",
-    levels: ["ce", "cm"],
     tip: "Légumineuse : peu de CO₂, beaucoup de fibres.",
   },
   {
@@ -163,7 +151,6 @@ export const FOODS = [
     kcalPer100g: 35,
     category: "legume",
     hue: "#f08a3a",
-    levels: ["cp", "ce", "cm"],
     tip: "Légume à très faible impact.",
   },
   {
@@ -175,7 +162,6 @@ export const FOODS = [
     kcalPer100g: 18,
     category: "legume",
     hue: "#e05a4f",
-    levels: ["cp", "ce", "cm"],
     tip: "De saison, son impact reste bas.",
   },
   {
@@ -187,7 +173,6 @@ export const FOODS = [
     kcalPer100g: 20,
     category: "legume",
     hue: "#6fa86f",
-    levels: ["ce", "cm"],
     tip: "Légume d’été, bon pour colorer l’assiette.",
   },
   {
@@ -199,7 +184,6 @@ export const FOODS = [
     kcalPer100g: 30,
     category: "legume",
     hue: "#4f8f4f",
-    levels: ["cp", "ce", "cm"],
     tip: "Encore un légume très léger pour la planète.",
   },
   {
@@ -211,7 +195,6 @@ export const FOODS = [
     kcalPer100g: 15,
     category: "legume",
     hue: "#7cb87a",
-    levels: ["cp", "ce", "cm"],
     tip: "Peu de calories, peu de CO₂.",
   },
   {
@@ -223,7 +206,6 @@ export const FOODS = [
     kcalPer100g: 52,
     category: "fruit",
     hue: "#c45c5c",
-    levels: ["cp", "ce", "cm"],
     tip: "Fruit local souvent excellent pour le défi climat.",
   },
   {
@@ -235,7 +217,6 @@ export const FOODS = [
     kcalPer100g: 90,
     category: "fruit",
     hue: "#e8c547",
-    levels: ["cp", "ce", "cm"],
     tip: "Voyage plus loin, mais reste raisonnable.",
   },
   {
@@ -247,7 +228,6 @@ export const FOODS = [
     kcalPer100g: 45,
     category: "fruit",
     hue: "#f0a040",
-    levels: ["cp", "ce", "cm"],
     tip: "Bonne source de vitamine C, faible CO₂.",
   },
   {
@@ -259,7 +239,6 @@ export const FOODS = [
     kcalPer100g: 70,
     category: "fruit",
     hue: "#d4a574",
-    levels: ["cp", "ce", "cm"],
     tip: "Un peu plus transformée qu’une pomme fraîche.",
   },
   {
@@ -271,7 +250,6 @@ export const FOODS = [
     kcalPer100g: 55,
     category: "laitier",
     hue: "#f5f0e6",
-    levels: ["cp", "ce", "cm"],
     tip: "Produit laitier à impact moyen.",
   },
   {
@@ -283,7 +261,6 @@ export const FOODS = [
     kcalPer100g: 370,
     category: "laitier",
     hue: "#f0d060",
-    levels: ["ce", "cm"],
     tip: "Concentré : beaucoup de calories et de CO₂ pour peu de grammes.",
   },
   {
@@ -295,7 +272,6 @@ export const FOODS = [
     kcalPer100g: 48,
     category: "laitier",
     hue: "#f7f4ec",
-    levels: ["cp", "ce", "cm"],
     tip: "Plus léger que le fromage à pâte dure.",
   },
   {
@@ -307,7 +283,6 @@ export const FOODS = [
     kcalPer100g: 46,
     category: "laitier",
     hue: "#f2f5f8",
-    levels: ["ce", "cm"],
     tip: "Utile pour atteindre l’objectif calories sans trop de CO₂.",
   },
 ];
@@ -319,11 +294,6 @@ export const CATEGORIES = [
   { id: "fruit", label: "Fruits", need: true },
   { id: "laitier", label: "Laitiers", need: false },
 ];
-
-/** @param {'cp'|'ce'|'cm'} level */
-export function foodsForLevel(level) {
-  return FOODS.filter((f) => f.levels.includes(level));
-}
 
 /**
  * @param {Food} food
@@ -340,9 +310,5 @@ export function impactFor(food, grams) {
   };
 }
 
-/** Objectif calories repas de midi selon le niveau */
-export const KCAL_TARGET = {
-  cp: 500,
-  ce: 550,
-  cm: 600,
-};
+/** Objectif calories repas de midi (indicatif) */
+export const KCAL_TARGET = 550;

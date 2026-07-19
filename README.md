@@ -1,6 +1,6 @@
 # Assiette Lab — défi repas (Fête de la science)
 
-Application web pour composer un **repas de midi**, **peser** les aliments et découvrir la somme de **CO₂** (Agribalyse® ADEME) et de **calories**. Conçue pour des élèves du **CP au CM2**, en défi entre petites équipes.
+Application web pour composer un **repas de midi**, **peser** les aliments et découvrir la somme de **CO₂** (Agribalyse® ADEME) et de **calories**. Défi entre petites équipes (école primaire).
 
 ## Démarrer
 
@@ -16,7 +16,7 @@ Ouvrir l’URL affichée (HTTPS) sur tablette / téléphone.
 
 ## Déroulement du jeu
 
-1. Choisir le **niveau** (CP–CE1 / CE2–CM1 / CM2) et le type de défi
+1. Choisir le type de défi
 2. Nommer l’**équipe**
 3. Composer une assiette complète : féculent + protéine + légume + fruit
 4. **Peser** chaque aliment sur une balance et saisir les grammes (pavé numérique)
@@ -27,7 +27,7 @@ Ouvrir l’URL affichée (HTTPS) sur tablette / téléphone.
 | Défi | Objectif |
 |------|----------|
 | **Planète** | Minimiser le CO₂ du repas |
-| **Énergie** | Approcher la cible calories (≈ 500–600 kcal) |
+| **Énergie** | Approcher la cible calories (≈ 550 kcal) |
 
 Les scores sont stockés dans le navigateur (`localStorage`) pour animer un challenge sur un stand.
 

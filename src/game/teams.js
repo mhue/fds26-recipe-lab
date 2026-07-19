@@ -1,4 +1,4 @@
-const STORAGE_KEY = "assiette-lab-scores-v1";
+const STORAGE_KEY = "assiette-lab-scores-v2";
 
 /**
  * @typedef {object} MealItem
@@ -14,7 +14,6 @@ const STORAGE_KEY = "assiette-lab-scores-v1";
  * @property {string} id
  * @property {string} name
  * @property {string} color
- * @property {'cp'|'ce'|'cm'} level
  * @property {'climat'|'energie'} mode
  * @property {MealItem[]} items
  * @property {number} totalCo2g
@@ -50,14 +49,15 @@ export function saveScores(scores) {
 }
 
 /**
- * Score défi climat : plus bas CO₂ = mieux (on inverse pour le classement).
+ * Score défi climat : plus bas CO₂ = mieux.
+ * Plafond 4 kg CO₂e (repas très impactant) → 0 pts ; un repas léger ~0,5 kg → ~875 pts.
  * Score défi énergie : proximité de la cible kcal.
  * @param {{ mode: 'climat'|'energie', totalCo2g: number, totalKcal: number, targetKcal: number }} p
  */
 export function computeScore(p) {
   if (p.mode === "climat") {
-    // 1000 pts − grammes CO₂ (plancher 0)
-    return Math.max(0, Math.round(1000 - p.totalCo2g));
+    const CO2_CEILING_G = 4000;
+    return Math.max(0, Math.round(1000 * (1 - p.totalCo2g / CO2_CEILING_G)));
   }
   const gap = Math.abs(p.totalKcal - p.targetKcal);
   return Math.max(0, Math.round(1000 - gap * 2));
@@ -79,7 +79,6 @@ export function addScore(entry) {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     name: entry.name,
     color: entry.color,
-    level: entry.level,
     mode: entry.mode,
     items: entry.items,
     totalCo2g: entry.totalCo2g,

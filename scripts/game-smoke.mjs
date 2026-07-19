@@ -1,4 +1,4 @@
-import { FOODS, impactFor, foodsForLevel, KCAL_TARGET } from "../src/game/foods.js";
+import { FOODS, impactFor, KCAL_TARGET } from "../src/game/foods.js";
 import { computeScore } from "../src/game/teams.js";
 import { NUTRISCORE_GRADES, NUTRISCORE_QUIZ } from "../src/game/nutriscore.js";
 
@@ -21,22 +21,21 @@ if (B.co2g < L.co2g * 10) {
   process.exit(1);
 }
 
-const cp = foodsForLevel("cp");
-const cm = foodsForLevel("cm");
-if (cp.length < 10 || cm.length < cp.length) {
-  console.error("level catalogs unexpected", cp.length, cm.length);
+if (FOODS.length < 20 || typeof KCAL_TARGET !== "number") {
+  console.error("catalog unexpected", FOODS.length, KCAL_TARGET);
   process.exit(1);
 }
 
-if (KCAL_TARGET.cp >= KCAL_TARGET.cm) {
-  console.error("kcal targets");
+const low = computeScore({ mode: "climat", totalCo2g: 400, totalKcal: 500, targetKcal: KCAL_TARGET });
+const mid = computeScore({ mode: "climat", totalCo2g: 900, totalKcal: 500, targetKcal: KCAL_TARGET });
+const heavy = computeScore({ mode: "climat", totalCo2g: 3500, totalKcal: 500, targetKcal: KCAL_TARGET });
+if (!(low > mid && mid > heavy && heavy > 0 && low < 1000)) {
+  console.error("climat score order", { low, mid, heavy });
   process.exit(1);
 }
-
-const low = computeScore({ mode: "climat", totalCo2g: 200, totalKcal: 500, targetKcal: 550 });
-const high = computeScore({ mode: "climat", totalCo2g: 900, totalKcal: 500, targetKcal: 550 });
-if (low <= high) {
-  console.error("climat score order", low, high);
+// Ancien bug : 1000 − grammes → 0 dès 1 kg CO₂e
+if (computeScore({ mode: "climat", totalCo2g: 1200, totalKcal: 500, targetKcal: KCAL_TARGET }) <= 0) {
+  console.error("climat score still collapses above 1 kg");
   process.exit(1);
 }
 
@@ -45,4 +44,4 @@ if (NUTRISCORE_GRADES.length !== 5 || NUTRISCORE_QUIZ.length < 3) {
   process.exit(1);
 }
 
-console.log("game-smoke ok", { foods: FOODS.length, cp: cp.length, cm: cm.length });
+console.log("game-smoke ok", { foods: FOODS.length, kcalTarget: KCAL_TARGET });

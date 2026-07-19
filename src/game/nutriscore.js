@@ -1,4 +1,4 @@
-/** Contenu pédagogique Nutri-Score (atelier CP–CM2). */
+/** Contenu pédagogique Nutri-Score. */
 
 export const NUTRISCORE_GRADES = [
   {

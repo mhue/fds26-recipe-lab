@@ -2,7 +2,6 @@ import {
   CATEGORIES,
   FOODS,
   KCAL_TARGET,
-  foodsForLevel,
   impactFor,
 } from "./foods.js";
 import {
@@ -18,14 +17,12 @@ import {
 } from "./teams.js";
 
 /** @typedef {'home'|'setup'|'compose'|'weigh'|'result'|'board'|'nutri'} Screen */
-/** @typedef {'cp'|'ce'|'cm'} Level */
 /** @typedef {'climat'|'energie'} Mode */
 
 const app = document.getElementById("app");
 
 /** @type {{
  *   screen: Screen,
- *   level: Level,
  *   mode: Mode,
  *   teamName: string,
  *   teamColor: string,
@@ -39,7 +36,6 @@ const app = document.getElementById("app");
  * }} */
 const state = {
   screen: "home",
-  level: "ce",
   mode: "climat",
   teamName: "",
   teamColor: TEAM_COLORS[0].hex,
@@ -52,7 +48,6 @@ const state = {
   resultSaved: false,
 };
 
-const LEVEL_LABEL = { cp: "CP / CE1", ce: "CE2 / CM1", cm: "CM2" };
 const MODE_LABEL = {
   climat: "Défi planète (moins de CO₂)",
   energie: "Défi énergie (calories)",
@@ -172,7 +167,7 @@ function viewHome() {
 
 function viewSetup() {
   const v = el("section", { class: "view setup-view" });
-  v.appendChild(titleBlock("Préparer l’équipe", "Choisissez le niveau, le défi, puis un nom d’équipe."));
+  v.appendChild(titleBlock("Préparer l’équipe", "Choisissez le défi, puis un nom d’équipe."));
 
   const form = el("form", { class: "setup-form" });
   form.addEventListener("submit", (e) => {
@@ -185,14 +180,6 @@ function viewSetup() {
   });
 
   form.innerHTML = `
-    <fieldset>
-      <legend>Niveau</legend>
-      <div class="chip-row" role="radiogroup" aria-label="Niveau">
-        ${levelChip("cp", LEVEL_LABEL.cp)}
-        ${levelChip("ce", LEVEL_LABEL.ce)}
-        ${levelChip("cm", LEVEL_LABEL.cm)}
-      </div>
-    </fieldset>
     <fieldset>
       <legend>Type de défi</legend>
       <div class="chip-row" role="radiogroup" aria-label="Défi">
@@ -217,12 +204,6 @@ function viewSetup() {
     <button type="submit" class="btn primary wide">Composer le repas</button>
   `;
 
-  form.querySelectorAll("[data-level]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.level = /** @type {Level} */ (btn.getAttribute("data-level"));
-      go("setup");
-    });
-  });
   form.querySelectorAll("[data-mode]").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.mode = /** @type {Mode} */ (btn.getAttribute("data-mode"));
@@ -240,15 +221,12 @@ function viewSetup() {
   return v;
 }
 
-function levelChip(id, label) {
-  return `<button type="button" class="chip ${state.level === id ? "is-on" : ""}" data-level="${id}">${label}</button>`;
-}
 function modeChip(id, label) {
   return `<button type="button" class="chip ${state.mode === id ? "is-on" : ""}" data-mode="${id}">${label}</button>`;
 }
 
 function viewCompose() {
-  const foods = foodsForLevel(state.level);
+  const foods = FOODS;
   const totals = plateTotals();
   const v = el("section", { class: "view compose-view" });
 
@@ -257,7 +235,7 @@ function viewCompose() {
     <div>
       <p class="team-pill" style="--team:${state.teamColor}"><span></span>${escapeHtml(state.teamName)}</p>
       <h2>Composez le repas</h2>
-      <p class="muted">${MODE_LABEL[state.mode]} · ${LEVEL_LABEL[state.level]}</p>
+      <p class="muted">${MODE_LABEL[state.mode]}</p>
     </div>
   `;
   v.appendChild(head);
@@ -317,7 +295,7 @@ function viewCompose() {
       btn.innerHTML = `
         <span class="food-swatch" aria-hidden="true"></span>
         <span class="food-name">${escapeHtml(food.name)}</span>
-        <span class="food-meta">${state.level === "cp" ? co2Clouds(food.co2PerKg) : `${food.co2PerKg.toFixed(1)} kg CO₂/kg`}</span>
+        <span class="food-meta">${food.co2PerKg.toFixed(1)} kg CO₂/kg</span>
       `;
       btn.addEventListener("click", () => {
         state.weighFoodId = food.id;
@@ -453,12 +431,11 @@ function confirmWeigh(food) {
 
 function viewResult() {
   const totals = plateTotals();
-  const target = KCAL_TARGET[state.level];
+  const target = KCAL_TARGET;
   if (!state.resultSaved) {
     state.lastResult = addScore({
       name: state.teamName,
       color: state.teamColor,
-      level: state.level,
       mode: state.mode,
       items: state.plate.map((p) => {
         const food = FOODS.find((f) => f.id === p.foodId);
@@ -597,7 +574,7 @@ function viewBoard() {
         <span class="rank-dot" style="--team:${row.color}"></span>
         <div>
           <strong>${escapeHtml(row.name)}</strong>
-          <span>${LEVEL_LABEL[row.level]} · ${fmtCo2(row.totalCo2g)} · ${Math.round(row.totalKcal)} kcal</span>
+          <span>${fmtCo2(row.totalCo2g)} · ${Math.round(row.totalKcal)} kcal</span>
         </div>
         <strong class="rank-score">${row.score}</strong>
       `;
@@ -704,7 +681,7 @@ function viewNutri() {
 }
 
 function meterBar(totals) {
-  const target = KCAL_TARGET[state.level];
+  const target = KCAL_TARGET;
   const co2Max = 1500;
   const co2Pct = Math.min(100, (totals.co2g / co2Max) * 100);
   const kcalPct = Math.min(100, (totals.kcal / (target * 1.4)) * 100);
@@ -750,13 +727,6 @@ function titleBlock(title, sub) {
   const d = el("div", { class: "title-block" });
   d.innerHTML = `<h2>${title}</h2><p class="muted">${sub}</p>`;
   return d;
-}
-
-/** @param {number} co2PerKg */
-function co2Clouds(co2PerKg) {
-  if (co2PerKg < 1.2) return "peu de nuages";
-  if (co2PerKg < 5) return "quelques nuages";
-  return "beaucoup de nuages";
 }
 
 /** @param {number} co2g */
