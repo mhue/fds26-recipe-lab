@@ -14,10 +14,12 @@ export const FRAC_SLOTS = 2;
 
 const WARP_W = 320;
 const WARP_H = 120;
+const WARP_W_FAST = 224;
+const WARP_H_FAST = 84;
 
 /**
  * @param {ImageData} imageData
- * @param {{ inverted?: boolean }} [opts]
+ * @param {{ inverted?: boolean, fast?: boolean }} [opts]
  * @returns {{
  *   frame: Rect,
  *   slots: Rect[],
@@ -30,44 +32,75 @@ const WARP_H = 120;
  * } | null}
  */
 export function analyzeDisplay(imageData, opts = {}) {
-  const { width, height } = imageData;
-  const gray = toGray(imageData);
+  const fast = Boolean(opts.fast);
+  const srcW = imageData.width;
+  const srcH = imageData.height;
+  const fullGray = toGray(imageData);
 
-  let corners = detectBestQuad(gray, width, height);
+  // Détection de coins sur une version réduite (gros gain de temps)
+  const detectMax = fast ? 220 : 360;
+  const scaled = downscaleGray(fullGray, srcW, srcH, detectMax);
+  let corners = fast
+    ? detectBestQuadFast(scaled.gray, scaled.width, scaled.height)
+    : detectBestQuad(scaled.gray, scaled.width, scaled.height);
+
   if (!corners) {
-    const binaryGuess = binarize(gray, width, height, false);
-    const aabb = detectOuterFrame(gray, binaryGuess, width, height);
+    const binaryGuess = binarize(scaled.gray, scaled.width, scaled.height, false);
+    const aabb = detectOuterFrame(scaled.gray, binaryGuess, scaled.width, scaled.height);
     if (!aabb) return null;
     corners = rectToCorners(aabb);
   }
 
-  // Autoriser un léger débordement hors du bezel / ROI
-  corners = expandQuad(corners, 1.06);
+  // Remonter les coins dans le repère image source
+  corners = corners.map((p) => ({
+    x: (p.x / scaled.scaleX),
+    y: (p.y / scaled.scaleY),
+  }));
+  corners = expandQuad(corners, fast ? 1.04 : 1.06);
   corners = orderCorners(corners);
 
-  const warpedGray = warpPerspectiveGray(gray, width, height, corners, WARP_W, WARP_H);
+  const warpW = fast ? WARP_W_FAST : WARP_W;
+  const warpH = fast ? WARP_H_FAST : WARP_H;
+  // Warp depuis l'image réduite si fast (suffisant pour templates 16×28)
+  const warpSrc = fast ? scaled.gray : fullGray;
+  const warpSrcW = fast ? scaled.width : srcW;
+  const warpSrcH = fast ? scaled.height : srcH;
+  const warpCorners = fast
+    ? corners.map((p) => ({ x: p.x * scaled.scaleX, y: p.y * scaled.scaleY }))
+    : corners;
+
+  const warpedGray = warpPerspectiveGray(
+    warpSrc,
+    warpSrcW,
+    warpSrcH,
+    warpCorners,
+    warpW,
+    warpH,
+  );
+
   const invertOptions =
     opts.inverted === true || opts.inverted === false ? [opts.inverted] : [false, true];
 
   /** @type {any[]} */
   const candidates = [];
+  const frame = {
+    x: Math.round(warpW * 0.02),
+    y: Math.round(warpH * 0.08),
+    w: Math.round(warpW * 0.96),
+    h: Math.round(warpH * 0.84),
+  };
+  const slots = splitSevenSlots(frame);
+
   for (const inverted of invertOptions) {
-    const binary = binarize(warpedGray, WARP_W, WARP_H, inverted);
-    const frame = {
-      x: Math.round(WARP_W * 0.02),
-      y: Math.round(WARP_H * 0.08),
-      w: Math.round(WARP_W * 0.96),
-      h: Math.round(WARP_H * 0.84),
-    };
-    const slots = splitSevenSlots(frame);
-    const score = scoreLayout(binary, WARP_W, slots, inverted);
+    const binary = binarize(warpedGray, warpW, warpH, inverted);
+    const score = scoreLayout(binary, warpW, slots, inverted);
     candidates.push({
       frame,
       slots,
       inverted,
       binary,
-      width: WARP_W,
-      height: WARP_H,
+      width: warpW,
+      height: warpH,
       corners,
       warpedGray,
       score,
@@ -141,12 +174,11 @@ export function slotsToReading(slotDigits) {
  */
 export function detectBestQuad(gray, width, height) {
   const edges = sobelEdges(gray, width, height);
-  const thr = percentile(edges, 0.82);
+  const thr = edgeThreshold(edges, 0.82);
   const bin = new Uint8Array(width * height);
   for (let i = 0; i < edges.length; i++) bin[i] = edges[i] >= thr ? 1 : 0;
-  dilate(bin, width, height, 1);
 
-  const contours = findContours(bin, width, height);
+  const contours = findContours(bin, width, height, 12);
   /** @type {{ corners: Point[], score: number }[]} */
   const quads = [];
 
@@ -156,24 +188,21 @@ export function detectBestQuad(gray, width, height) {
     if (area < width * height * 0.08) continue;
     if (area > width * height * 0.98) continue;
 
-    const peri = perimeter(contour);
-    const approx = approxPolyDP(contour, Math.max(3, peri * 0.03));
-    let corners = approx;
-    if (corners.length > 4) {
-      corners = approxPolyDP(contour, Math.max(4, peri * 0.045));
-    }
+    // Sous-échantillonner le contour avant Douglas-Peucker
+    const slim = subsampleContour(contour, 80);
+    const peri = perimeter(slim);
+    let corners = approxPolyDP(slim, Math.max(3, peri * 0.04));
     if (corners.length !== 4) {
-      // Fallback : boîte englobante du contour → 4 coins
-      corners = rectToCorners(boundingRect(contour));
+      corners = rectToCorners(boundingRect(slim));
     } else {
       corners = orderCorners(corners);
     }
 
     const score = scoreQuad(corners, width, height, area);
     if (score > 0) quads.push({ corners, score });
+    if (quads.length >= 8) break;
   }
 
-  // Candidat axes-alignés (projections) comme filet de sécurité
   const aabb = frameFromEdges(gray, width, height);
   if (aabb) {
     const c = orderCorners(rectToCorners(aabb));
@@ -186,6 +215,55 @@ export function detectBestQuad(gray, width, height) {
   if (!quads.length) return null;
   quads.sort((a, b) => b.score - a.score);
   return quads[0].corners;
+}
+
+/**
+ * Version rapide : projections d'arêtes / AABB (pour l'apprentissage).
+ * @param {Uint8Array} gray
+ * @param {number} width
+ * @param {number} height
+ * @returns {Point[]|null}
+ */
+export function detectBestQuadFast(gray, width, height) {
+  const aabb = frameFromEdges(gray, width, height);
+  if (aabb && aabb.w > width * 0.35 && aabb.h > height * 0.25) {
+    return orderCorners(rectToCorners(aabb));
+  }
+  const binary = binarize(gray, width, height, false);
+  const ink = frameFromInk(binary, width, height);
+  if (ink) return orderCorners(rectToCorners(ink));
+  return orderCorners(
+    rectToCorners({
+      x: Math.round(width * 0.04),
+      y: Math.round(height * 0.08),
+      w: Math.round(width * 0.92),
+      h: Math.round(height * 0.84),
+    }),
+  );
+}
+
+/**
+ * @param {Uint8Array} gray
+ * @param {number} width
+ * @param {number} height
+ * @param {number} maxSide
+ */
+function downscaleGray(gray, width, height, maxSide) {
+  const scale = Math.min(1, maxSide / Math.max(width, height));
+  if (scale >= 0.999) {
+    return { gray, width, height, scaleX: 1, scaleY: 1 };
+  }
+  const w = Math.max(16, Math.round(width * scale));
+  const h = Math.max(12, Math.round(height * scale));
+  const out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const sy = Math.min(height - 1, Math.floor((y + 0.5) * (height / h)));
+    for (let x = 0; x < w; x++) {
+      const sx = Math.min(width - 1, Math.floor((x + 0.5) * (width / w)));
+      out[y * w + x] = gray[sy * width + sx];
+    }
+  }
+  return { gray: out, width: w, height: h, scaleX: w / width, scaleY: h / height };
 }
 
 /**
@@ -361,26 +439,40 @@ function sobelEdges(gray, width, height) {
   return out;
 }
 
-/** @param {Float32Array} arr @param {number} p */
-function percentile(arr, p) {
-  const vals = Array.from(arr).filter((v) => v > 0);
-  if (!vals.length) return 1;
-  vals.sort((a, b) => a - b);
-  return vals[Math.min(vals.length - 1, Math.floor(vals.length * p))];
+/** Seuil d'arêtes via histogramme (O(n)), sans tri. */
+function edgeThreshold(arr, p) {
+  let max = 0;
+  for (let i = 0; i < arr.length; i++) if (arr[i] > max) max = arr[i];
+  if (max <= 0) return 1;
+  const bins = 64;
+  const hist = new Uint32Array(bins);
+  let counted = 0;
+  for (let i = 0; i < arr.length; i++) {
+    const v = arr[i];
+    if (v <= 0) continue;
+    const b = Math.min(bins - 1, Math.floor((v / max) * bins));
+    hist[b] += 1;
+    counted += 1;
+  }
+  if (!counted) return 1;
+  const target = Math.floor(counted * p);
+  let acc = 0;
+  for (let b = 0; b < bins; b++) {
+    acc += hist[b];
+    if (acc >= target) return ((b + 0.5) / bins) * max;
+  }
+  return max * 0.5;
 }
 
-function dilate(bin, width, height, r) {
-  const copy = Uint8Array.from(bin);
-  for (let y = r; y < height - r; y++) {
-    for (let x = r; x < width - r; x++) {
-      if (!copy[y * width + x]) continue;
-      for (let dy = -r; dy <= r; dy++) {
-        for (let dx = -r; dx <= r; dx++) {
-          bin[(y + dy) * width + (x + dx)] = 1;
-        }
-      }
-    }
+function subsampleContour(points, maxPts) {
+  if (points.length <= maxPts) return points;
+  /** @type {Point[]} */
+  const out = [];
+  const step = points.length / maxPts;
+  for (let i = 0; i < maxPts; i++) {
+    out.push(points[Math.min(points.length - 1, Math.floor(i * step))]);
   }
+  return out;
 }
 
 /**
@@ -388,9 +480,10 @@ function dilate(bin, width, height, r) {
  * @param {Uint8Array} bin
  * @param {number} width
  * @param {number} height
+ * @param {number} [maxContours]
  * @returns {Point[][]}
  */
-function findContours(bin, width, height) {
+function findContours(bin, width, height, maxContours = 24) {
   const visited = new Uint8Array(width * height);
   /** @type {Point[][]} */
   const contours = [];
@@ -405,11 +498,10 @@ function findContours(bin, width, height) {
     [1, -1],
   ];
 
-  for (let y = 1; y < height - 1; y++) {
-    for (let x = 1; x < width - 1; x++) {
+  for (let y = 1; y < height - 1; y += 2) {
+    for (let x = 1; x < width - 1; x += 2) {
       const i = y * width + x;
       if (!bin[i] || visited[i]) continue;
-      // Point de bord : voisin fond
       let isBorder = false;
       for (const [dx, dy] of dirs) {
         if (!bin[(y + dy) * width + (x + dx)]) {
@@ -421,6 +513,7 @@ function findContours(bin, width, height) {
 
       const contour = traceContour(bin, visited, width, height, x, y, dirs);
       if (contour.length >= 16) contours.push(contour);
+      if (contours.length >= maxContours) return contours;
     }
   }
   return contours;
@@ -432,14 +525,15 @@ function traceContour(bin, visited, width, height, startX, startY, dirs) {
   let x = startX;
   let y = startY;
   let dir = 0;
-  for (let step = 0; step < width * height; step++) {
+  const maxSteps = Math.min(width * height, 4000);
+  for (let step = 0; step < maxSteps; step++) {
     const i = y * width + x;
     if (visited[i] && points.length > 8 && x === startX && y === startY) break;
     visited[i] = 1;
     points.push({ x, y });
     let moved = false;
     for (let k = 0; k < 8; k++) {
-      const nd = (dir + 6 + k) % 8; // priorité tourner à gauche
+      const nd = (dir + 6 + k) % 8;
       const nx = x + dirs[nd][0];
       const ny = y + dirs[nd][1];
       if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;

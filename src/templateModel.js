@@ -50,12 +50,15 @@ export async function learnDigitModel(samples) {
     return { model: null, message: "Aucun exemple annoté.", perSample: [] };
   }
 
+  const t0 = performance.now();
   /** @type {Record<string, number[][]>} */
   const templates = {};
   /** @type {boolean[]} */
   const invertVotes = [];
   /** @type {string[]} */
   const perSample = [];
+  /** @type {boolean|null} */
+  let knownInvert = null;
 
   for (const sample of samples) {
     const expected = labelToSlots(sample.label);
@@ -64,30 +67,31 @@ export async function learnDigitModel(samples) {
       continue;
     }
 
-    const imageData = await blobToImageData(sample.image);
-    const layout = analyzeDisplay(imageData);
+    const imageData = await blobToImageData(sample.image, { maxWidth: 320 });
+    const layout = analyzeDisplay(imageData, {
+      fast: true,
+      inverted: knownInvert === null ? undefined : knownInvert,
+    });
     if (!layout) {
       perSample.push(`${sample.label}: cadre introuvable`);
       continue;
     }
 
+    if (knownInvert === null) knownInvert = layout.inverted;
     invertVotes.push(layout.inverted);
     let used = 0;
     for (let i = 0; i < 7; i++) {
       const want = expected[i];
       if (want == null) continue;
       const box = layout.slots[i];
-      const ink = inkRatio(layout.binary, layout.width, box);
-      if (ink < BLANK_INK * 0.5) {
-        // case attendue non vide mais peu d'encre — on prend quand même
-      }
       const vec = cropToTemplate(layout.binary, layout.width, box);
       if (!templates[want]) templates[want] = [];
-      templates[want].push(vec);
+      // Une seule empreinte par chiffre et par exemple (évite de grossir le modèle)
+      if (templates[want].length < 4) templates[want].push(vec);
       used += 1;
     }
     perSample.push(
-      `${sample.label}: OK cadre→7 cases (${used} glyphes, polarité ${layout.inverted ? "LCD" : "LED"})`,
+      `${sample.label}: OK (${used} glyphes, ${layout.inverted ? "LCD" : "LED"})`,
     );
   }
 
@@ -115,9 +119,10 @@ export async function learnDigitModel(samples) {
   saveModel(model);
   const missing = "0123456789".split("").filter((d) => !templates[d]);
   const missTxt = missing.length ? ` · manquants: ${missing.join("")}` : "";
+  const ms = Math.round(performance.now() - t0);
   return {
     model,
-    message: `Modèle XXXXX.XX · chiffres ${covered.join("")}${missTxt}`,
+    message: `Modèle XXXXX.XX · ${covered.join("")}${missTxt} · ${ms} ms`,
     perSample,
   };
 }
@@ -310,9 +315,20 @@ function readSevenSegBox(binary, width, box, thr) {
   return maskToDigit(mask);
 }
 
-/** @param {Blob} blob */
-async function blobToImageData(blob) {
-  const bitmap = await createImageBitmap(blob);
+/** @param {Blob} blob @param {{ maxWidth?: number }} [opts] */
+async function blobToImageData(blob, opts = {}) {
+  const maxWidth = opts.maxWidth ?? 640;
+  let bitmap = await createImageBitmap(blob);
+  if (bitmap.width > maxWidth) {
+    const h = Math.max(1, Math.round((bitmap.height * maxWidth) / bitmap.width));
+    const resized = await createImageBitmap(bitmap, {
+      resizeWidth: maxWidth,
+      resizeHeight: h,
+      resizeQuality: "low",
+    });
+    bitmap.close?.();
+    bitmap = resized;
+  }
   const canvas = document.createElement("canvas");
   canvas.width = bitmap.width;
   canvas.height = bitmap.height;
