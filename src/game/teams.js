@@ -95,9 +95,11 @@ export function clearScores() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
-/** @param {'climat'|'energie'} mode */
-export function rankingFor(mode) {
-  return loadScores()
-    .filter((s) => s.mode === mode)
-    .sort((a, b) => b.score - a.score || a.totalCo2g - b.totalCo2g);
+/**
+ * @param {'climat'|'energie'|'all'} [mode='all']
+ */
+export function rankingFor(mode = "all") {
+  const scores = loadScores();
+  const filtered = mode === "all" ? scores : scores.filter((s) => s.mode === mode);
+  return filtered.sort((a, b) => b.score - a.score || a.totalCo2g - b.totalCo2g);
 }

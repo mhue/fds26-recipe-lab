@@ -18,12 +18,14 @@ import {
 
 /** @typedef {'home'|'setup'|'compose'|'weigh'|'result'|'board'|'nutri'} Screen */
 /** @typedef {'climat'|'energie'} Mode */
+/** @typedef {'all'|Mode} BoardFilter */
 
 const app = document.getElementById("app");
 
 /** @type {{
  *   screen: Screen,
  *   mode: Mode,
+ *   boardFilter: BoardFilter,
  *   teamName: string,
  *   teamColor: string,
  *   plate: { foodId: string, grams: number }[],
@@ -37,6 +39,7 @@ const app = document.getElementById("app");
 const state = {
   screen: "home",
   mode: "climat",
+  boardFilter: "all",
   teamName: "",
   teamColor: TEAM_COLORS[0].hex,
   plate: [],
@@ -53,6 +56,11 @@ const MODE_LABEL = {
   energie: "Défi énergie (calories)",
 };
 
+const MODE_SHORT = {
+  climat: "Planète",
+  energie: "Énergie",
+};
+
 init();
 
 function init() {
@@ -64,13 +72,18 @@ function init() {
   }
   const hash = location.hash.replace("#", "");
   if (hash === "nutri") state.screen = "nutri";
-  if (hash === "board") state.screen = "board";
+  if (hash === "board") {
+    state.screen = "board";
+    state.boardFilter = "all";
+  }
   render();
   window.addEventListener("hashchange", () => {
     const h = location.hash.replace("#", "");
     if (h === "nutri") state.screen = "nutri";
-    else if (h === "board") state.screen = "board";
-    else if (h === "" || h === "home") state.screen = "home";
+    else if (h === "board") {
+      state.screen = "board";
+      state.boardFilter = "all";
+    } else if (h === "" || h === "home") state.screen = "home";
     render();
   });
 }
@@ -543,38 +556,49 @@ function viewResult() {
 
 function viewBoard() {
   const v = el("section", { class: "view board-view" });
-  v.appendChild(titleBlock("Classement des équipes", "Défi entre petites équipes — scores enregistrés sur cet appareil."));
+  v.appendChild(
+    titleBlock(
+      "Classement des équipes",
+      "Toutes les équipes du stand — filtrez par défi si besoin.",
+    ),
+  );
 
   const tabs = el("div", { class: "chip-row" });
-  for (const mode of /** @type {Mode[]} */ (["climat", "energie"])) {
+  /** @type {{ id: BoardFilter, label: string }[]} */
+  const filters = [
+    { id: "all", label: "Toutes" },
+    { id: "climat", label: "Planète" },
+    { id: "energie", label: "Énergie" },
+  ];
+  for (const filter of filters) {
     const b = el("button", {
       type: "button",
-      class: `chip ${state.mode === mode ? "is-on" : ""}`,
+      class: `chip ${state.boardFilter === filter.id ? "is-on" : ""}`,
     });
-    b.textContent = mode === "climat" ? "Planète" : "Énergie";
+    b.textContent = filter.label;
     b.addEventListener("click", () => {
-      state.mode = mode;
+      state.boardFilter = filter.id;
       render();
     });
     tabs.appendChild(b);
   }
   v.appendChild(tabs);
 
-  const rows = rankingFor(state.mode);
+  const rows = rankingFor(state.boardFilter);
   if (!rows.length) {
     const empty = el("p", { class: "muted" });
     empty.textContent = "Aucun score pour l’instant. Lancez un défi !";
     v.appendChild(empty);
   } else {
     const list = el("ol", { class: "rank-list" });
-    rows.slice(0, 15).forEach((row, i) => {
+    rows.forEach((row, i) => {
       const li = el("li", { class: "rank-item" });
       li.innerHTML = `
         <span class="rank-n">${i + 1}</span>
         <span class="rank-dot" style="--team:${row.color}"></span>
         <div>
           <strong>${escapeHtml(row.name)}</strong>
-          <span>${fmtCo2(row.totalCo2g)} · ${Math.round(row.totalKcal)} kcal</span>
+          <span>${MODE_SHORT[row.mode] || row.mode} · ${fmtCo2(row.totalCo2g)} · ${Math.round(row.totalKcal)} kcal</span>
         </div>
         <strong class="rank-score">${row.score}</strong>
       `;
@@ -715,6 +739,7 @@ function plateTotals() {
 /** @param {Screen} screen */
 function go(screen) {
   state.screen = screen;
+  if (screen === "board") state.boardFilter = "all";
   const hash =
     screen === "nutri" ? "nutri" : screen === "board" ? "board" : screen === "home" ? "home" : "";
   if (hash) location.hash = hash;
