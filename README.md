@@ -14,6 +14,14 @@ Ouvrir l’URL affichée (HTTPS) sur tablette / téléphone.
 - `/` — jeu **Assiette Lab**
 - `/balance.html` — module caméra pour lire l’afficheur d’une balance (optionnel)
 
+## Publier sur le web
+
+Le jeu est une page statique. GitHub Pages le construit à chaque push sur `cursor/scale-digit-reader` :
+
+[https://mhue.github.io/fds26-recipe-lab/](https://mhue.github.io/fds26-recipe-lab/)
+
+Les scores restent dans le navigateur de chaque appareil (`localStorage`) : le classement n’est pas partagé entre visiteurs.
+
 ## Déroulement du jeu
 
 1. Choisir le type de défi

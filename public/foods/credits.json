@@ -1,0 +1,193 @@
+[
+  {
+    "id": "pain",
+    "file": "/foods/pain.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Baguettes.jpg",
+    "license": "CC BY-SA 2.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Baguettes.jpg"
+  },
+  {
+    "id": "pates",
+    "file": "/foods/pates.jpg",
+    "source": "Pixabay",
+    "license": "Pixabay Content License",
+    "page": "https://pixabay.com/photos/pasta-spaghetti-bundle-raw-food-1463918/"
+  },
+  {
+    "id": "riz",
+    "file": "/foods/riz.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Uncooked rice.jpg",
+    "license": "CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Uncooked_rice.jpg"
+  },
+  {
+    "id": "pdt",
+    "file": "/foods/pdt.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Russet potato.jpg",
+    "license": "CC BY-SA 2.5",
+    "page": "https://commons.wikimedia.org/wiki/File:Russet_potato.jpg"
+  },
+  {
+    "id": "poulet",
+    "file": "/foods/poulet.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:CHICKEN BREAST.jpg",
+    "license": "CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:CHICKEN_BREAST.jpg"
+  },
+  {
+    "id": "boeuf",
+    "file": "/foods/boeuf.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Hackfleisch-1.jpg",
+    "license": "CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Hackfleisch-1.jpg"
+  },
+  {
+    "id": "jambon",
+    "file": "/foods/jambon.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Sliced cooked ham.jpg",
+    "license": "CC BY 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Sliced_cooked_ham.jpg"
+  },
+  {
+    "id": "oeuf",
+    "file": "/foods/oeuf.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Brown chicken egg.jpg",
+    "license": "Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:Brown_chicken_egg.jpg"
+  },
+  {
+    "id": "saumon",
+    "file": "/foods/saumon.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Salmon2.jpg",
+    "license": "CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Salmon2.jpg"
+  },
+  {
+    "id": "lentilles",
+    "file": "/foods/lentilles.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Lens culinaris seeds.jpg",
+    "license": "Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:Lens_culinaris_seeds.jpg"
+  },
+  {
+    "id": "pois-chiches",
+    "file": "/foods/pois-chiches.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Ordinary chickpeas in a ceramic bowl.jpg",
+    "license": "CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Ordinary_chickpeas_in_a_ceramic_bowl.jpg"
+  },
+  {
+    "id": "carotte",
+    "file": "/foods/carotte.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Carrots.jpg",
+    "license": "Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:Carrots.jpg"
+  },
+  {
+    "id": "tomate",
+    "file": "/foods/tomate.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Tomato je.jpg",
+    "license": "CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Tomato_je.jpg"
+  },
+  {
+    "id": "courgette",
+    "file": "/foods/courgette.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Zucchini-Whole.jpg",
+    "license": "Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:Zucchini-Whole.jpg"
+  },
+  {
+    "id": "haricots",
+    "file": "/foods/haricots.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Green beans.jpg",
+    "license": "CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Green_beans.jpg"
+  },
+  {
+    "id": "salade",
+    "file": "/foods/salade.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Iceberg lettuce.jpg",
+    "license": "Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:Iceberg_lettuce.jpg"
+  },
+  {
+    "id": "pomme",
+    "file": "/foods/pomme.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Red Apple.jpg",
+    "license": "CC BY 2.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Red_Apple.jpg"
+  },
+  {
+    "id": "banane",
+    "file": "/foods/banane.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Bananas.jpg",
+    "license": "CC BY-SA 2.5",
+    "page": "https://commons.wikimedia.org/wiki/File:Bananas.jpg"
+  },
+  {
+    "id": "orange",
+    "file": "/foods/orange.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Orange-Fruit-Pieces.jpg",
+    "license": "CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Orange-Fruit-Pieces.jpg"
+  },
+  {
+    "id": "compote",
+    "file": "/foods/compote.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Applesauce.jpg",
+    "license": "CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Applesauce.jpg"
+  },
+  {
+    "id": "yaourt",
+    "file": "/foods/yaourt.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Joghurt.jpg",
+    "license": "CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Joghurt.jpg"
+  },
+  {
+    "id": "fromage",
+    "file": "/foods/fromage.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Emmentaler.jpg",
+    "license": "CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Emmentaler.jpg"
+  },
+  {
+    "id": "fromage-blanc",
+    "file": "/foods/fromage-blanc.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Quark Germany.jpg",
+    "license": "CC0",
+    "page": "https://commons.wikimedia.org/wiki/File:Quark_Germany.jpg"
+  },
+  {
+    "id": "lait",
+    "file": "/foods/lait.jpg",
+    "source": "Wikimedia Commons",
+    "commons": "File:Glass of milk.jpg",
+    "license": "CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Glass_of_milk.jpg"
+  }
+]

@@ -3,6 +3,7 @@ import { defineConfig } from "vite";
 import basicSsl from "@vitejs/plugin-basic-ssl";
 
 export default defineConfig({
+  base: process.env.GITHUB_PAGES === "true" ? "/fds26-recipe-lab/" : "/",
   plugins: [basicSsl()],
   server: {
     host: true,

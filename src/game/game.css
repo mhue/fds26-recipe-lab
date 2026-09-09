@@ -454,7 +454,7 @@ legend {
 
 .food-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
   gap: 0.55rem;
 }
 
@@ -463,11 +463,12 @@ legend {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.82);
   border-radius: 16px;
-  padding: 0.75rem;
+  padding: 0;
   display: grid;
-  gap: 0.25rem;
+  gap: 0;
   cursor: pointer;
   font: inherit;
+  overflow: hidden;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -480,22 +481,27 @@ legend {
   outline: 3px solid var(--accent);
 }
 
-.food-swatch {
+.food-photo {
   width: 100%;
-  height: 2.4rem;
-  border-radius: 12px;
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.55), transparent 45%),
-    var(--h);
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  background: var(--h, #ddd);
 }
 
 .food-name {
   font-weight: 800;
+  font-size: 0.86rem;
+  padding: 0.4rem 0.5rem 0.5rem;
+  line-height: 1.2;
 }
 
-.food-meta {
-  font-size: 0.82rem;
-  color: var(--muted);
+.food-thumb {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 10px;
+  object-fit: cover;
+  background: #ddd;
 }
 
 .plate-list,
@@ -549,8 +555,15 @@ legend {
 
 .sticky-actions {
   position: sticky;
-  bottom: 0.5rem;
-  padding-top: 0.5rem;
+  bottom: 0;
+  z-index: 2;
+  padding: 0.7rem 0 calc(0.35rem + env(safe-area-inset-bottom));
+  background: linear-gradient(
+    180deg,
+    rgba(232, 240, 234, 0) 0%,
+    rgba(232, 240, 234, 0.92) 28%,
+    #e8f0ea 65%
+  );
 }
 
 .weigh-visual {
@@ -558,6 +571,15 @@ legend {
   place-items: center;
   gap: 0.4rem;
   margin-bottom: 0.85rem;
+}
+
+.weigh-photo {
+  width: min(100%, 14rem);
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  background: #ddd;
 }
 
 .weigh-blob {

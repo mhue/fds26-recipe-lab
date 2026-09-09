@@ -2,6 +2,7 @@ import {
   CATEGORIES,
   FOODS,
   KCAL_TARGET,
+  foodImage,
   impactFor,
 } from "./foods.js";
 import {
@@ -274,7 +275,7 @@ function viewCompose() {
       const imp = impactFor(food, item.grams);
       const li = el("li", { class: "plate-item" });
       li.innerHTML = `
-        <span class="food-dot" style="--h:${food.hue}"></span>
+        <img class="food-thumb" src="${foodImage(food)}" alt="" width="48" height="48" />
         <div>
           <strong>${escapeHtml(food.name)}</strong>
           <span>${item.grams} g · ${fmtCo2(imp.co2g)} · ${Math.round(imp.kcal)} kcal</span>
@@ -304,11 +305,11 @@ function viewCompose() {
         type: "button",
         class: `food-card ${onPlate ? "is-on" : ""}`,
         style: `--h:${food.hue}`,
+        "aria-label": onPlate ? `${food.name}, déjà dans l’assiette` : food.name,
       });
       btn.innerHTML = `
-        <span class="food-swatch" aria-hidden="true"></span>
+        <img class="food-photo" src="${foodImage(food)}" alt="" width="280" height="280" />
         <span class="food-name">${escapeHtml(food.name)}</span>
-        <span class="food-meta">${food.co2PerKg.toFixed(1)} kg CO₂/kg</span>
       `;
       btn.addEventListener("click", () => {
         state.weighFoodId = food.id;
@@ -322,6 +323,11 @@ function viewCompose() {
     block.appendChild(grid);
     v.appendChild(block);
   }
+
+  const photoSrc = el("p", { class: "source" });
+  photoSrc.innerHTML =
+    'Photos : <a href="https://commons.wikimedia.org/" target="_blank" rel="noopener">Wikimedia Commons</a>, <a href="https://pixabay.com/" target="_blank" rel="noopener">Pixabay</a>.';
+  v.appendChild(photoSrc);
 
   const actions = el("div", { class: "sticky-actions" });
   const finish = el("button", {
@@ -356,9 +362,8 @@ function viewWeigh() {
 
   const panel = el("div", { class: "weigh-panel" });
   panel.innerHTML = `
-    <div class="weigh-visual" style="--h:${food.hue}">
-      <span class="weigh-blob" aria-hidden="true"></span>
-      <p class="weigh-food">${escapeHtml(food.name)}</p>
+    <div class="weigh-visual">
+      <img class="weigh-photo" src="${foodImage(food)}" alt="" width="280" height="280" />
     </div>
     <label class="field weigh-field">
       <span>Masse lue sur la balance (grammes)</span>
@@ -378,7 +383,7 @@ function viewWeigh() {
       }
     </p>
     <div class="weigh-links">
-      <a class="btn ghost" href="/balance.html" target="_blank" rel="noopener">Aide lecture balance (caméra)</a>
+      <a class="btn ghost" href="${import.meta.env.BASE_URL}balance.html" target="_blank" rel="noopener">Aide lecture balance (caméra)</a>
     </div>
   `;
 
@@ -512,9 +517,10 @@ function viewResult() {
 
   const detail = el("ul", { class: "plate-list" });
   for (const item of saved.items) {
+    const food = FOODS.find((f) => f.id === item.foodId);
     const li = el("li", { class: "plate-item" });
     li.innerHTML = `
-      <span class="food-dot" style="--h:${FOODS.find((f) => f.id === item.foodId)?.hue || "#888"}"></span>
+      <img class="food-thumb" src="${food ? foodImage(food) : ""}" alt="" width="48" height="48" />
       <div>
         <strong>${escapeHtml(item.foodName)}</strong>
         <span>${item.grams} g · ${fmtCo2(item.co2g)} · ${Math.round(item.kcal)} kcal</span>

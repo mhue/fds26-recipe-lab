@@ -19,6 +19,12 @@
  * @property {string} tip
  */
 
+/** Photos d’ingrédients (Wikimedia Commons / Pixabay), dans /public/foods. */
+export function foodImage(food) {
+  const base = import.meta.env?.BASE_URL || "/";
+  return `${base}foods/${food.id}.jpg`;
+}
+
 /** @type {Food[]} */
 export const FOODS = [
   {
