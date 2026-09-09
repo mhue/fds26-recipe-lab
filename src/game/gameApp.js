@@ -16,6 +16,7 @@ import {
   clearScores,
   rankingFor,
 } from "./teams.js";
+import { serialSupported, usbScale } from "./usbScale.js";
 
 /** @typedef {'home'|'setup'|'compose'|'weigh'|'result'|'board'|'nutri'} Screen */
 /** @typedef {'climat'|'energie'} Mode */
@@ -78,6 +79,7 @@ function init() {
     state.boardFilter = "all";
   }
   render();
+  usbScale.subscribe(applyScaleToWeighUi);
   window.addEventListener("hashchange", () => {
     const h = location.hash.replace("#", "");
     if (h === "nutri") state.screen = "nutri";
@@ -169,7 +171,7 @@ function viewHome() {
       </div>
     </div>
     <ul class="home-cards">
-      <li><strong>Pesée</strong><span>Balance + saisie des grammes</span></li>
+      <li><strong>Pesée</strong><span>Balance USB ou saisie des grammes</span></li>
       <li><strong>Agribalyse</strong><span>Données CO₂ ADEME</span></li>
       <li><strong>Équipes</strong><span>Classement en direct</span></li>
     </ul>
@@ -365,8 +367,20 @@ function viewWeigh() {
     <div class="weigh-visual">
       <img class="weigh-photo" src="${foodImage(food)}" alt="" width="280" height="280" />
     </div>
+    <div class="scale-bar" data-state="${usbScale.status}">
+      <p id="scale-status" class="scale-status">${escapeHtml(usbScale.message)}</p>
+      ${
+        serialSupported()
+          ? `<button type="button" class="btn ghost" id="btn-scale">${
+              usbScale.status === "open" || usbScale.status === "connecting"
+                ? "Déconnecter"
+                : "Connecter la balance USB"
+            }</button>`
+          : ""
+      }
+    </div>
     <label class="field weigh-field">
-      <span>Masse lue sur la balance (grammes)</span>
+      <span>Masse (grammes) — balance USB ou pavé</span>
       <input id="grams-input" type="number" inputmode="decimal" min="1" max="2000" step="1"
         placeholder="ex. 120" value="${escapeAttr(state.weighDraft)}" />
     </label>
@@ -399,6 +413,20 @@ function viewWeigh() {
       : "Entrez le poids pour voir l’impact";
   };
   input.addEventListener("input", refreshLive);
+
+  const scaleBtn = panel.querySelector("#btn-scale");
+  scaleBtn?.addEventListener("click", async () => {
+    if (usbScale.status === "open" || usbScale.status === "connecting") {
+      await usbScale.disconnect();
+      return;
+    }
+    try {
+      await usbScale.connect();
+    } catch {
+      /* message déjà affiché */
+    }
+  });
+  usbScale.tryReconnect();
 
   panel.querySelectorAll("[data-k]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -766,7 +794,29 @@ function fmtCo2(co2g) {
   return `${(co2g / 1000).toFixed(2)} kg CO₂e`;
 }
 
-/** @param {string} raw */
+/** @param {import('./usbScale.js').ScaleEvent} evt */
+function applyScaleToWeighUi(evt) {
+  if (state.screen !== "weigh") return;
+  const statusEl = document.getElementById("scale-status");
+  const bar = statusEl?.closest(".scale-bar");
+  const btn = /** @type {HTMLButtonElement|null} */ (document.getElementById("btn-scale"));
+  if (statusEl) statusEl.textContent = evt.message;
+  if (bar) bar.setAttribute("data-state", evt.status);
+  if (btn) {
+    const open = evt.status === "open" || evt.status === "connecting";
+    btn.textContent = open ? "Déconnecter" : "Connecter la balance USB";
+    btn.disabled = evt.status === "connecting";
+  }
+  if (evt.status !== "open" || evt.grams == null) return;
+  const input = /** @type {HTMLInputElement|null} */ (document.getElementById("grams-input"));
+  if (!input) return;
+  const g = Math.round(evt.grams);
+  if (g < 1 || g > 2000) return;
+  if (input.value === String(g)) return;
+  input.value = String(g);
+  input.dispatchEvent(new Event("input"));
+}
+
 function parseGrams(raw) {
   const n = Number(String(raw).replace(",", "."));
   if (!Number.isFinite(n) || n <= 0) return 0;

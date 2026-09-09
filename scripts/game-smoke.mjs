@@ -1,6 +1,7 @@
 import { FOODS, impactFor, KCAL_TARGET } from "../src/game/foods.js";
 import { computeScore } from "../src/game/teams.js";
 import { NUTRISCORE_GRADES, NUTRISCORE_QUIZ } from "../src/game/nutriscore.js";
+import { formatGrams, parseScaleLine } from "../src/game/usbScale.js";
 
 // 100 g de lentilles cuites ≈ 66 g CO₂e
 const lentilles = FOODS.find((f) => f.id === "lentilles");
@@ -41,6 +42,33 @@ if (computeScore({ mode: "climat", totalCo2g: 1200, totalKcal: 500, targetKcal: 
 
 if (NUTRISCORE_GRADES.length !== 5 || NUTRISCORE_QUIZ.length < 3) {
   console.error("nutriscore content");
+  process.exit(1);
+}
+
+const scaleLines = [
+  [" +14.850g", 14.85],
+  ["ST,GS,+  120.0 g", 120],
+  ["0.125 kg", 125],
+  ["  45,6", 45.6],
+  ["C5-0", null],
+  ["OL", null],
+  ["10 pcs", null],
+  ["0.00 g", null],
+];
+for (const [line, expected] of scaleLines) {
+  const got = parseScaleLine(line);
+  if (expected == null) {
+    if (got != null) {
+      console.error("parseScaleLine expected null", line, got);
+      process.exit(1);
+    }
+  } else if (got == null || Math.abs(got - expected) > 0.01) {
+    console.error("parseScaleLine fail", line, got, expected);
+    process.exit(1);
+  }
+}
+if (formatGrams(14.85) !== "14.9" || formatGrams(120) !== "120") {
+  console.error("formatGrams fail", formatGrams(14.85), formatGrams(120));
   process.exit(1);
 }
 
