@@ -6,6 +6,7 @@
  */
 
 const BAUD = 9600;
+const OPEN_TIMEOUT_MS = 4000;
 
 /** @type {{ usbVendorId: number, usbProductId?: number }[]} */
 const PORT_FILTERS = [
@@ -118,7 +119,7 @@ export class UsbScale {
   }
 
   async connect() {
-    if (this.status === "open") return;
+    if (this.status === "open" || this.status === "connecting") return;
     this.userClosed = false;
     if (!serialSupported()) {
       this.status = "unsupported";
@@ -150,20 +151,6 @@ export class UsbScale {
     await this.openPort(port);
   }
 
-  /** Réouvre un port déjà autorisé, sans picker (ex. retour sur l’écran pesée). */
-  async tryReconnect() {
-    if (this.userClosed) return;
-    if (!serialSupported() || this.status === "open" || this.status === "connecting") return;
-    try {
-      const ports = await navigator.serial.getPorts();
-      const port = ports.find((p) => isLikelyScale(p)) || ports[0];
-      if (!port) return;
-      await this.openPort(port);
-    } catch {
-      /* permission or device gone */
-    }
-  }
-
   /** @param {SerialPort} port */
   async openPort(port) {
     await this.close();
@@ -172,14 +159,33 @@ export class UsbScale {
     this.message = "Ouverture du port 9600 8N1…";
     this.emit();
 
-    await port.open({
-      baudRate: BAUD,
-      dataBits: 8,
-      stopBits: 1,
-      parity: "none",
-      flowControl: "none",
-      bufferSize: 255,
-    });
+    try {
+      await withTimeout(
+        port.open({
+          baudRate: BAUD,
+          dataBits: 8,
+          stopBits: 1,
+          parity: "none",
+          flowControl: "none",
+        }),
+        OPEN_TIMEOUT_MS,
+        "open-timeout",
+      );
+    } catch (err) {
+      try {
+        await port.close();
+      } catch {
+        /* still locked by another app */
+      }
+      this.port = null;
+      this.status = "error";
+      const busy = err && /** @type {{ message?: string }} */ (err).message === "open-timeout";
+      this.message = busy
+        ? "Port occupé. Fermez l’autre onglet ou Firefox, puis réessayez."
+        : "Impossible d’ouvrir le port : " + (err?.message || "erreur");
+      this.emit();
+      throw err;
+    }
     try {
       await port.setSignals({ dataTerminalReady: true, requestToSend: true });
     } catch {
@@ -284,7 +290,29 @@ export class UsbScale {
   }
 }
 
-/** @param {SerialPort} port */
+/**
+ * @param {Promise<T>} promise
+ * @param {number} ms
+ * @param {string} message
+ * @returns {Promise<T>}
+ * @template T
+ */
+function withTimeout(promise, ms, message) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
 function isLikelyScale(port) {
   const info = port.getInfo?.() || {};
   const vid = info.usbVendorId;

@@ -426,7 +426,6 @@ function viewWeigh() {
       /* message déjà affiché */
     }
   });
-  usbScale.tryReconnect();
 
   panel.querySelectorAll("[data-k]").forEach((btn) => {
     btn.addEventListener("click", () => {
