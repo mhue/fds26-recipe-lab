@@ -1,4 +1,4 @@
-import { FOODS, impactFor, KCAL_TARGET } from "../src/game/foods.js";
+import { CATEGORIES, FOODS, impactFor, KCAL_TARGET } from "../src/game/foods.js";
 import { computeScore } from "../src/game/teams.js";
 import { NUTRISCORE_GRADES, NUTRISCORE_QUIZ } from "../src/game/nutriscore.js";
 import { formatGrams, parseScaleLine } from "../src/game/usbScale.js";
@@ -24,6 +24,31 @@ if (B.co2g < L.co2g * 10) {
 
 if (FOODS.length < 20 || typeof KCAL_TARGET !== "number") {
   console.error("catalog unexpected", FOODS.length, KCAL_TARGET);
+  process.exit(1);
+}
+
+const removed = ["jambon", "oeuf", "saumon", "pois-chiches", "carotte", "tomate", "courgette", "fromage-blanc", "lait"];
+const added = [
+  "carottes-rapees",
+  "friand",
+  "soupe",
+  "poisson-pane",
+  "saucisses",
+  "frites",
+  "poelee",
+  "creme-caramel",
+  "gateau",
+  "salade-fruits",
+  "bonbons",
+  "chips",
+  "petit-beurre",
+];
+if (removed.some((id) => FOODS.some((f) => f.id === id))) {
+  console.error("removed foods still in catalog");
+  process.exit(1);
+}
+if (added.some((id) => !FOODS.some((f) => f.id === id)) || CATEGORIES.length !== 8) {
+  console.error("meal components incomplete", CATEGORIES.map((c) => c.id));
   process.exit(1);
 }
 

@@ -31,6 +31,7 @@ const app = document.getElementById("app");
  *   teamName: string,
  *   teamColor: string,
  *   plate: { foodId: string, grams: number }[],
+ *   skipped: string[],
  *   weighFoodId: string|null,
  *   weighDraft: string,
  *   quizIndex: number,
@@ -45,6 +46,7 @@ const state = {
   teamName: "",
   teamColor: TEAM_COLORS[0].hex,
   plate: [],
+  skipped: [],
   weighFoodId: null,
   weighDraft: "",
   quizIndex: 0,
@@ -192,6 +194,7 @@ function viewSetup() {
     if (!name) return;
     state.teamName = name.slice(0, 24);
     state.plate = [];
+    state.skipped = [];
     go("compose");
   });
 
@@ -257,39 +260,52 @@ function viewCompose() {
   v.appendChild(head);
   v.appendChild(meterBar(totals));
 
-  const needed = CATEGORIES.filter((c) => c.need);
-  const missing = needed.filter(
-    (c) => !state.plate.some((p) => FOODS.find((f) => f.id === p.foodId)?.category === c.id),
-  );
+  const missing = CATEGORIES.filter((c) => !categoryChosen(c.id));
 
   const checklist = el("p", { class: "checklist" });
   checklist.textContent =
     missing.length === 0
-      ? "Assiette complète : féculent + protéine + légume + fruit."
-      : `Encore besoin : ${missing.map((m) => m.label.toLowerCase()).join(", ")}.`;
+      ? "Tous les composants sont choisis. Un repas peut être peu équilibré."
+      : `Encore à choisir : ${missing.map((m) => m.label.toLowerCase()).join(", ")}.`;
   v.appendChild(checklist);
 
-  if (state.plate.length) {
+  const rows = plateRows();
+  if (rows.length) {
     const plate = el("ul", { class: "plate-list" });
-    for (const item of state.plate) {
-      const food = FOODS.find((f) => f.id === item.foodId);
-      if (!food) continue;
-      const imp = impactFor(food, item.grams);
+    for (const row of rows) {
       const li = el("li", { class: "plate-item" });
-      li.innerHTML = `
-        <img class="food-thumb" src="${foodImage(food)}" alt="" width="48" height="48" />
-        <div>
-          <strong>${escapeHtml(food.name)}</strong>
-          <span>${item.grams} g · ${fmtCo2(imp.co2g)} · ${Math.round(imp.kcal)} kcal</span>
-        </div>
-      `;
-      const rm = el("button", { type: "button", class: "icon-btn", "aria-label": "Retirer" });
-      rm.textContent = "×";
-      rm.addEventListener("click", () => {
-        state.plate = state.plate.filter((p) => p.foodId !== item.foodId);
-        render();
-      });
-      li.appendChild(rm);
+      if (row.kind === "rien") {
+        li.innerHTML = `
+          <span class="food-thumb rien-thumb" aria-hidden="true">—</span>
+          <div>
+            <strong>Rien</strong>
+            <span>${escapeHtml(row.category.label)}</span>
+          </div>
+        `;
+        const rm = el("button", { type: "button", class: "icon-btn", "aria-label": "Retirer" });
+        rm.textContent = "×";
+        rm.addEventListener("click", () => {
+          state.skipped = state.skipped.filter((id) => id !== row.category.id);
+          render();
+        });
+        li.appendChild(rm);
+      } else {
+        const imp = impactFor(row.food, row.item.grams);
+        li.innerHTML = `
+          <img class="food-thumb" src="${foodImage(row.food)}" alt="" width="48" height="48" />
+          <div>
+            <strong>${escapeHtml(row.food.name)}</strong>
+            <span>${row.item.grams} g · ${fmtCo2(imp.co2g)} · ${Math.round(imp.kcal)} kcal</span>
+          </div>
+        `;
+        const rm = el("button", { type: "button", class: "icon-btn", "aria-label": "Retirer" });
+        rm.textContent = "×";
+        rm.addEventListener("click", () => {
+          state.plate = state.plate.filter((p) => p.foodId !== row.item.foodId);
+          render();
+        });
+        li.appendChild(rm);
+      }
       plate.appendChild(li);
     }
     v.appendChild(plate);
@@ -322,6 +338,26 @@ function viewCompose() {
       });
       grid.appendChild(btn);
     }
+    const rienOn = state.skipped.includes(cat.id);
+    const rien = el("button", {
+      type: "button",
+      class: `food-card is-rien ${rienOn ? "is-on" : ""}`,
+      "aria-label": rienOn ? `Rien pour ${cat.label}, déjà choisi` : `Rien pour ${cat.label}`,
+      "aria-pressed": rienOn ? "true" : "false",
+    });
+    rien.innerHTML = `
+      <span class="food-photo rien-visual" aria-hidden="true">—</span>
+      <span class="food-name">Rien</span>
+    `;
+    rien.addEventListener("click", () => {
+      state.plate = state.plate.filter((p) => {
+        const food = FOODS.find((f) => f.id === p.foodId);
+        return food?.category !== cat.id;
+      });
+      if (!state.skipped.includes(cat.id)) state.skipped.push(cat.id);
+      render();
+    });
+    grid.appendChild(rien);
     block.appendChild(grid);
     v.appendChild(block);
   }
@@ -469,6 +505,7 @@ function confirmWeigh(food) {
   if (!(grams > 0)) return;
   state.plate = state.plate.filter((p) => p.foodId !== food.id);
   state.plate.push({ foodId: food.id, grams });
+  state.skipped = state.skipped.filter((id) => id !== food.category);
   state.weighFoodId = null;
   state.weighDraft = "";
   go("compose");
@@ -482,13 +519,21 @@ function viewResult() {
       name: state.teamName,
       color: state.teamColor,
       mode: state.mode,
-      items: state.plate.map((p) => {
-        const food = FOODS.find((f) => f.id === p.foodId);
-        const imp = food ? impactFor(food, p.grams) : { co2g: 0, kcal: 0 };
+      items: plateRows().map((row) => {
+        if (row.kind === "rien") {
+          return {
+            foodId: `rien:${row.category.id}`,
+            foodName: `Rien — ${row.category.label}`,
+            grams: 0,
+            co2g: 0,
+            kcal: 0,
+          };
+        }
+        const imp = impactFor(row.food, row.item.grams);
         return {
-          foodId: p.foodId,
-          foodName: food?.name || p.foodId,
-          grams: p.grams,
+          foodId: row.item.foodId,
+          foodName: row.food.name,
+          grams: row.item.grams,
           co2g: imp.co2g,
           kcal: imp.kcal,
         };
@@ -516,7 +561,7 @@ function viewResult() {
       : Math.abs(totals.kcal - target) < 80
         ? "Pile dans la cible calories !"
         : totals.kcal < target
-          ? "Un peu juste en énergie — ajoutez un féculent ?"
+          ? "Un peu juste en énergie — ajoutez un accompagnement ou du pain ?"
           : "Un peu au-dessus — réduisez une portion.";
 
   v.innerHTML = `
@@ -545,12 +590,21 @@ function viewResult() {
   const detail = el("ul", { class: "plate-list" });
   for (const item of saved.items) {
     const food = FOODS.find((f) => f.id === item.foodId);
+    const rien = item.foodId.startsWith("rien:");
     const li = el("li", { class: "plate-item" });
     li.innerHTML = `
-      <img class="food-thumb" src="${food ? foodImage(food) : ""}" alt="" width="48" height="48" />
+      ${
+        rien
+          ? `<span class="food-thumb rien-thumb" aria-hidden="true">—</span>`
+          : `<img class="food-thumb" src="${food ? foodImage(food) : ""}" alt="" width="48" height="48" />`
+      }
       <div>
         <strong>${escapeHtml(item.foodName)}</strong>
-        <span>${item.grams} g · ${fmtCo2(item.co2g)} · ${Math.round(item.kcal)} kcal</span>
+        <span>${
+          rien
+            ? "Choix : rien"
+            : `${item.grams} g · ${fmtCo2(item.co2g)} · ${Math.round(item.kcal)} kcal`
+        }</span>
       </div>
     `;
     detail.appendChild(li);
@@ -566,6 +620,7 @@ function viewResult() {
   again.addEventListener("click", () => {
     state.teamName = "";
     state.plate = [];
+    state.skipped = [];
     state.resultSaved = false;
     state.lastResult = null;
     go("setup");
@@ -754,6 +809,28 @@ function meterBar(totals) {
     </div>
   `;
   return bar;
+}
+
+/** @param {string} categoryId */
+function categoryChosen(categoryId) {
+  if (state.skipped.includes(categoryId)) return true;
+  return state.plate.some((p) => FOODS.find((f) => f.id === p.foodId)?.category === categoryId);
+}
+
+function plateRows() {
+  /** @type {({ kind: 'rien', category: (typeof CATEGORIES)[number] } | { kind: 'food', item: { foodId: string, grams: number }, food: (typeof FOODS)[number] })[]} */
+  const rows = [];
+  for (const category of CATEGORIES) {
+    if (state.skipped.includes(category.id)) {
+      rows.push({ kind: "rien", category });
+      continue;
+    }
+    for (const item of state.plate) {
+      const food = FOODS.find((f) => f.id === item.foodId);
+      if (food?.category === category.id) rows.push({ kind: "food", item, food });
+    }
+  }
+  return rows;
 }
 
 function plateTotals() {

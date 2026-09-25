@@ -15,33 +15,46 @@ const UA = "AssietteLab/0.2 (educational science-fair game)";
 
 /** @type {Record<string, { commons?: string, pixabay?: string }>} */
 const FILES = {
-  pain: { commons: "File:Baguettes.jpg" },
+  "carottes-rapees": { commons: "File:French grated carrot salad (cropped).jpg" },
+  friand: {
+    commons:
+      "File:Comme à la Maison (Villefranche-sur-Saône) feuilleté au fromage (février 2024).jpg",
+  },
+  soupe: {
+    commons: "File:-2022-02-01 Bowl of spring vegetable soup, Trimingham, Norfolk.JPG",
+  },
+  poulet: { commons: "File:CHICKEN BREAST.jpg" },
+  boeuf: { commons: "File:Hackfleisch-1.jpg" },
+  lentilles: { commons: "File:Lens culinaris seeds.jpg" },
+  "poisson-pane": { commons: "File:Fishfinger classic fried 1.jpg" },
+  saucisses: { commons: "File:Chicken cocktail sausage 02.jpg" },
   pates: {
     pixabay:
       "https://cdn.pixabay.com/photo/2016/06/17/19/09/pasta-1463918_1280.jpg",
+    page: "https://pixabay.com/photos/pasta-spaghetti-bundle-raw-food-1463918/",
   },
   riz: { commons: "File:Uncooked rice.jpg" },
   pdt: { commons: "File:Russet potato.jpg" },
-  poulet: { commons: "File:CHICKEN BREAST.jpg" },
-  boeuf: { commons: "File:Hackfleisch-1.jpg" },
-  jambon: { commons: "File:Sliced cooked ham.jpg" },
-  oeuf: { commons: "File:Brown chicken egg.jpg" },
-  saumon: { commons: "File:Salmon2.jpg" },
-  lentilles: { commons: "File:Lens culinaris seeds.jpg" },
-  "pois-chiches": { commons: "File:Ordinary chickpeas in a ceramic bowl.jpg" },
-  carotte: { commons: "File:Carrots.jpg" },
-  tomate: { commons: "File:Tomato je.jpg" },
-  courgette: { commons: "File:Zucchini-Whole.jpg" },
+  frites: { commons: "File:French Fries.jpg" },
   haricots: { commons: "File:Green beans.jpg" },
   salade: { commons: "File:Iceberg lettuce.jpg" },
+  poelee: { commons: "File:Dinner vegetable dish at a party in a silver pan.jpg" },
+  yaourt: { commons: "File:Joghurt.jpg" },
+  fromage: { commons: "File:Emmentaler.jpg" },
+  "creme-caramel": { commons: "File:Crème caramel 2.jpg" },
   pomme: { commons: "File:Red Apple.jpg" },
   banane: { commons: "File:Bananas.jpg" },
   orange: { commons: "File:Orange-Fruit-Pieces.jpg" },
   compote: { commons: "File:Applesauce.jpg" },
-  yaourt: { commons: "File:Joghurt.jpg" },
-  fromage: { commons: "File:Emmentaler.jpg" },
-  "fromage-blanc": { commons: "File:Quark Germany.jpg" },
-  lait: { commons: "File:Glass of milk.jpg" },
+  gateau: {
+    commons:
+      "File:Piece of chocolate cake on a white plate decorated with chocolate sauce.jpg",
+  },
+  "salade-fruits": { commons: "File:Fruit Salad 4.jpg" },
+  pain: { commons: "File:Baguettes.jpg" },
+  bonbons: { commons: "File:Candy 6577.jpg" },
+  chips: { commons: "File:Chips in a bowl at a party.JPG" },
+  "petit-beurre": { commons: "File:Petits-beurre 32.jpg" },
 };
 
 async function toJpeg(srcPath, destPath) {

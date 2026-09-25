@@ -26,7 +26,7 @@ Les scores restent dans le navigateur de chaque appareil (`localStorage`) : le c
 
 1. Choisir le type de défi
 2. Nommer l’**équipe**
-3. Composer une assiette complète : féculent + protéine + légume + fruit
+3. Composer le repas par composants (entrée, protéines, accompagnements, laitage, dessert, pain, extras). Chaque composant peut être un aliment ou « Rien » : le repas peut être peu équilibré.
 4. **Peser** chaque aliment sur une balance et saisir les grammes (pavé numérique)
 5. Voir le total **CO₂e** + **kcal**, puis le **classement**
 

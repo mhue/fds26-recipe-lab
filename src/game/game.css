@@ -504,6 +504,22 @@ legend {
   background: #ddd;
 }
 
+.rien-visual,
+.rien-thumb {
+  display: grid;
+  place-items: center;
+  background: #e7eee9;
+  color: var(--muted);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.food-card.is-rien .rien-visual {
+  aspect-ratio: 1;
+  width: 100%;
+  font-size: 1.8rem;
+}
+
 .plate-list,
 .rank-list,
 .ns-steps {
