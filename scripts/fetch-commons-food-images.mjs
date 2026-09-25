@@ -52,7 +52,7 @@ const FILES = {
   },
   "salade-fruits": { commons: "File:Fruit Salad 4.jpg" },
   pain: { commons: "File:Baguettes.jpg" },
-  bonbons: { commons: "File:Candy 6577.jpg" },
+  bonbons: { commons: "File:Dragibus.jpg" },
   chips: { commons: "File:Chips in a bowl at a party.JPG" },
   "petit-beurre": { commons: "File:Petits-beurre 32.jpg" },
 };
