@@ -177,13 +177,6 @@ body {
   color: #f7f3ea;
 }
 
-.hero-lead {
-  margin: 0.65rem 0 0;
-  font-size: 1.05rem;
-  color: rgba(247, 243, 234, 0.92);
-  max-width: 28rem;
-}
-
 .hero-actions {
   display: flex;
   flex-wrap: wrap;

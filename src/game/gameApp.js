@@ -170,7 +170,6 @@ function viewHome() {
     <div class="hero-copy">
       <p class="eyebrow">Fête de la science</p>
       <h1 class="hero-title">Assiette Lab</h1>
-      <p class="hero-lead">Trois activités séparées, pour ne pas mélanger les calories et le CO₂.</p>
     </div>
     <fieldset class="level-picker">
       <legend>Niveau de la classe</legend>
@@ -189,7 +188,7 @@ function viewHome() {
       </button>
       <button type="button" class="activity-card" data-act="nutri">
         <strong>Atelier Nutri-Score</strong>
-        <span>La lettre sur l’emballage. On ne parle pas de CO₂.</span>
+        <span>La lettre sur l’emballage.</span>
       </button>
       <button type="button" class="activity-card" data-act="climat">
         <strong>Défi planète</strong>
