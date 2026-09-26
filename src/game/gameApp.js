@@ -961,17 +961,17 @@ function goalBarHtml(goal) {
     goal.mark == null
       ? ""
       : `<b class="goal-mark" style="left:${goal.mark.toFixed(1)}%" title="Cible"></b>`;
-  const body = split
-    ? shareHistHtml(goal.shares || [])
-    : `<div class="goal-track" aria-hidden="true">
+  const track = `<div class="goal-track" aria-hidden="true">
         <i style="width:${goal.fill.toFixed(1)}%"></i>
         ${mark}
       </div>`;
+  const shares = split ? shareHistHtml(goal.shares || []) : "";
   return `
     <div class="goal-bar ${goal.compact ? "is-compact" : ""} ${split ? "is-split" : ""} ${goal.kind === "kcal" ? "is-kcal" : "is-co2"}">
       <div class="goal-top"><span>${escapeHtml(goal.label)}</span><strong>${escapeHtml(goal.valueText)}</strong></div>
-      ${body}
+      ${track}
       <p class="goal-caption">${escapeHtml(goal.caption)}</p>
+      ${shares}
     </div>
   `;
 }
@@ -996,23 +996,19 @@ function shareHistHtml(shares) {
       </li>`,
       )
       .join("")}
-  </ul>`;
+  </ul>
+  <p class="goal-caption">Chaque barre est la part de cet aliment.</p>`;
 }
 
 /**
- * Once the plate is complete, replace the total bar with each food’s share.
+ * Once the plate is complete, keep the total bar and add each food’s share.
  * @param {{ kind: string, label: string, valueText: string, fill: number, mark: number|null, caption: string, compact?: boolean }} goal
  * @param {{ foodId: string, foodName?: string, kcal: number, co2g: number }[]} items
  */
 function withShares(goal, items) {
   const shares = foodShares(items);
   if (!shares.length) return goal;
-  const lead = "Chaque barre est la part de cet aliment.";
-  const caption =
-    goal.kind === "kcal"
-      ? `${lead} ${goal.caption}`
-      : `${lead} Moins de CO₂ au total, mieux c’est.`;
-  return { ...goal, shares, caption };
+  return { ...goal, shares };
 }
 
 /** @returns {{ foodId: string, foodName: string, kcal: number, co2g: number }[]} */

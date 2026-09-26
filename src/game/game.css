@@ -345,6 +345,10 @@ body {
   font-size: 0.88rem;
 }
 
+.goal-bar.is-split .goal-track {
+  height: 1.45rem;
+}
+
 .goal-bar.is-compact .goal-track {
   height: 0.55rem;
 }
@@ -356,7 +360,7 @@ body {
 
 .goal-hist {
   list-style: none;
-  margin: 0.15rem 0 0;
+  margin: 0.35rem 0 0;
   padding: 0;
   display: grid;
   gap: 0.38rem;
