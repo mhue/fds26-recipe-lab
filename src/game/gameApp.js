@@ -259,7 +259,7 @@ function viewSetup() {
       </div>
       <p class="level-target">${
         state.mode === "energie"
-          ? `${level.label}, ${level.age} ans : environ ${level.dailyKcal.toLocaleString("fr-FR")} kcal par jour. Le déjeuner en prend 35 %, soit <strong>${target} kcal</strong>.`
+          ? `${level.label} : environ ${level.dailyKcal.toLocaleString("fr-FR")} kcal par jour. Le déjeuner en prend 35 %, soit <strong>${target} kcal</strong>.`
           : `Classe de ${level.label}. Ici on ne compte que le CO₂.`
       }</p>
     </fieldset>
@@ -294,7 +294,7 @@ function viewSetup() {
       if (!line) return;
       line.innerHTML =
         state.mode === "energie"
-          ? `${level.label}, ${level.age} ans : environ ${level.dailyKcal.toLocaleString("fr-FR")} kcal par jour. Le déjeuner en prend 35 %, soit <strong>${target} kcal</strong>.`
+          ? `${level.label} : environ ${level.dailyKcal.toLocaleString("fr-FR")} kcal par jour. Le déjeuner en prend 35 %, soit <strong>${target} kcal</strong>.`
           : `Classe de ${level.label}. Ici on ne compte que le CO₂.`;
     });
   });
@@ -638,7 +638,7 @@ function viewResult() {
     <p class="verdict">${verdict}</p>
     ${
       state.mode === "energie"
-        ? `<p class="challenge-note">${level.label}, ${level.age} ans : la cible du déjeuner est ${target} kcal. Ni trop, ni trop peu. Un plateau à 50 kcal de la cible vaut mieux qu’un plateau à 100 kcal, au-dessus ou en dessous.</p>`
+        ? `<p class="challenge-note">${level.label} : la cible du déjeuner est ${target} kcal. Ni trop, ni trop peu. Un plateau à 50 kcal de la cible vaut mieux qu’un plateau à 100 kcal, au-dessus ou en dessous.</p>`
         : `<p class="challenge-note">Défi planète : moins de CO₂, mieux c’est.</p>`
     }
     ${bar}
@@ -898,7 +898,7 @@ function challengeNote() {
   const level = currentLevel();
   const target = lunchKcal(level.id);
   if (state.mode === "energie") {
-    return `${level.label}, ${level.age} ans : le déjeuner vise ${target} kcal. Ni trop, ni trop peu. L’écart à la cible compte, pas seulement d’être au-dessus ou en dessous.`;
+    return `${level.label} : le déjeuner vise ${target} kcal. Ni trop, ni trop peu. L’écart à la cible compte, pas seulement d’être au-dessus ou en dessous.`;
   }
   return "Défi planète : on regarde le CO₂. Moins, c’est mieux.";
 }
