@@ -42,9 +42,7 @@ const FILES = {
   yaourt: { commons: "File:Joghurt.jpg" },
   fromage: { commons: "File:Emmentaler.jpg" },
   "creme-caramel": { commons: "File:Crème caramel 2.jpg" },
-  pomme: { commons: "File:Red Apple.jpg" },
   banane: { commons: "File:Bananas.jpg" },
-  orange: { commons: "File:Orange-Fruit-Pieces.jpg" },
   compote: { commons: "File:Applesauce.jpg" },
   gateau: {
     commons:

@@ -89,7 +89,7 @@ Nutri-Score = nutrition sur l’emballage. CO₂ = climat. Calories = énergie d
 
 - Tablette(s) Assiette Lab · Chrome · balance USB · coupelles
 - Emballages avec Nutri-Score (2 paires du même rayon)
-- Aliments à peser : carottes râpées, friand, soupe, poulet, steak, lentilles, poisson pané, saucisses de poulet, pâtes, riz, pomme de terre, frites, haricots verts, salade, poêlée de légumes, yaourt, fromage, crème caramel, pomme, banane, orange, compote, gâteau, salade de fruits, pain, bonbons, chips, petit-beurre…
+- Aliments à peser : carottes râpées, friand, soupe, poulet, steak, lentilles, poisson pané, saucisses de poulet, pâtes, riz, pomme de terre, frites, haricots verts, salade, poêlée de légumes, yaourt, fromage, crème caramel, banane, compote, gâteau, salade de fruits, pain, bonbons, chips, petit-beurre…
 - Illustrations n°1 à n°5 (A4/A3)
 
 Illustration n°1 : Nutri-Score A → E  

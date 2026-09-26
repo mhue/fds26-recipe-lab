@@ -143,28 +143,12 @@
     "page": "https://commons.wikimedia.org/wiki/File:Cr%C3%A8me_caramel_2.jpg"
   },
   {
-    "id": "pomme",
-    "file": "/foods/pomme.jpg",
-    "source": "Wikimedia Commons",
-    "commons": "File:Red Apple.jpg",
-    "license": "CC BY 2.0",
-    "page": "https://commons.wikimedia.org/wiki/File:Red_Apple.jpg"
-  },
-  {
     "id": "banane",
     "file": "/foods/banane.jpg",
     "source": "Wikimedia Commons",
     "commons": "File:Bananas.jpg",
     "license": "CC BY-SA 2.5",
     "page": "https://commons.wikimedia.org/wiki/File:Bananas.jpg"
-  },
-  {
-    "id": "orange",
-    "file": "/foods/orange.jpg",
-    "source": "Wikimedia Commons",
-    "commons": "File:Orange-Fruit-Pieces.jpg",
-    "license": "CC BY-SA 3.0",
-    "page": "https://commons.wikimedia.org/wiki/File:Orange-Fruit-Pieces.jpg"
   },
   {
     "id": "compote",
