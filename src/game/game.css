@@ -159,15 +159,6 @@ body {
   box-shadow: var(--shadow);
 }
 
-.eyebrow {
-  margin: 0 0 0.35rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-size: 0.78rem;
-  color: #f2c14e;
-}
-
 .hero-title {
   margin: 0;
   font-family: var(--font-display);

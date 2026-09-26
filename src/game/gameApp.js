@@ -168,7 +168,6 @@ function viewHome() {
   v.innerHTML = `
     <div class="hero-plane" aria-hidden="true"></div>
     <div class="hero-copy">
-      <p class="eyebrow">Fête de la science</p>
       <h1 class="hero-title">Assiette Lab</h1>
     </div>
     <fieldset class="level-picker">
@@ -179,12 +178,12 @@ function viewHome() {
             `<button type="button" class="chip ${state.levelId === item.id ? "is-on" : ""}" data-level="${item.id}">${item.label}</button>`,
         ).join("")}
       </div>
-      <p class="level-target">Cible du défi énergie, ${level.label} (${level.age} ans) : <strong>${target} kcal</strong> au déjeuner.</p>
+      <p class="level-target">Cible du défi énergie : <strong>${target} kcal</strong> au déjeuner.</p>
     </fieldset>
     <div class="activity-list">
       <button type="button" class="activity-card" data-act="energie">
         <strong>Défi apports énergétiques</strong>
-        <span>Ni trop, ni trop peu : juste les ${target} kcal du niveau. Pour les plus jeunes.</span>
+        <span>Ni trop, ni trop peu : juste les ${target} kcal du niveau.</span>
       </button>
       <button type="button" class="activity-card" data-act="nutri">
         <strong>Atelier Nutri-Score</strong>
@@ -192,7 +191,7 @@ function viewHome() {
       </button>
       <button type="button" class="activity-card" data-act="climat">
         <strong>Défi planète</strong>
-        <span>Le moins de CO₂ possible. Pour les plus grands, ou s’il reste du temps.</span>
+        <span>Le moins de CO₂ possible.</span>
       </button>
     </div>
   `;
