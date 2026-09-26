@@ -2,7 +2,7 @@ import { CATEGORIES, FOODS, impactFor } from "../src/game/foods.js";
 import { lunchKcal } from "../src/game/levels.js";
 import { computeScore } from "../src/game/teams.js";
 import { NUTRISCORE_GRADES, NUTRISCORE_QUIZ } from "../src/game/nutriscore.js";
-import { formatGrams, parseScaleLine } from "../src/game/usbScale.js";
+import { formatChipId, formatGrams, parseScaleLine } from "../src/game/usbScale.js";
 
 // 100 g de lentilles cuites ≈ 66 g CO₂e
 const lentilles = FOODS.find((f) => f.id === "lentilles");
@@ -104,6 +104,14 @@ for (const [line, expected] of scaleLines) {
     console.error("parseScaleLine fail", line, got, expected);
     process.exit(1);
   }
+}
+if (formatChipId({ getInfo: () => ({ usbVendorId: 0x0403, usbProductId: 0x6001 }) }) !== "0403:6001") {
+  console.error("formatChipId fail");
+  process.exit(1);
+}
+if (formatChipId({ getInfo: () => ({}) }) !== "") {
+  console.error("formatChipId empty fail");
+  process.exit(1);
 }
 if (formatGrams(14.85) !== "14.9" || formatGrams(120) !== "120") {
   console.error("formatGrams fail", formatGrams(14.85), formatGrams(120));

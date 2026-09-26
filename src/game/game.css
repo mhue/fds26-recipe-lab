@@ -744,6 +744,19 @@ legend {
   font-weight: 700;
 }
 
+.scale-chip {
+  margin: -0.15rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.scale-chip:empty {
+  display: none;
+}
+
 .scale-bar .btn {
   justify-self: start;
 }

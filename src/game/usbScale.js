@@ -1,5 +1,7 @@
 /**
- * Lecture d’une balance USB (FTDI / CH340) via Web Serial.
+ * Lecture d’une balance USB via Web Serial.
+ * Tous les adaptateurs série sont proposés : l’identifiant USB
+ * s’affiche une fois le port choisi.
  *
  * Réglages balance (USS-DBS / clone) : C5-0 continu ou C5-2 + UNIT.
  * Liaison : 9600 8N1.
@@ -7,15 +9,6 @@
 
 const BAUD = 9600;
 const OPEN_TIMEOUT_MS = 4000;
-
-/** @type {{ usbVendorId: number, usbProductId?: number }[]} */
-const PORT_FILTERS = [
-  { usbVendorId: 0x0403, usbProductId: 0x6001 }, // FTDI FT232R
-  { usbVendorId: 0x0403 },
-  { usbVendorId: 0x1a86, usbProductId: 0x7523 }, // QinHeng CH340
-  { usbVendorId: 0x1a86 },
-  { usbVendorId: 0x10c4, usbProductId: 0xea60 }, // CP210x
-];
 
 const UNIT_TO_GRAMS = {
   g: 1,
@@ -66,6 +59,7 @@ export function serialSupported() {
  * @property {number|null} grams
  * @property {string} raw
  * @property {string} message
+ * @property {string} chipId identifiant USB « vvvv:pppp », vide si inconnu
  */
 
 export class UsbScale {
@@ -80,6 +74,7 @@ export class UsbScale {
     this.status = serialSupported() ? "idle" : "unsupported";
     this.grams = /** @type {number|null} */ (null);
     this.raw = "";
+    this.chipId = "";
     this.message = serialSupported()
       ? "Balance USB non connectée"
       : "Balance USB : ouvrez le jeu dans Chrome sur l’ordinateur";
@@ -110,6 +105,7 @@ export class UsbScale {
       grams: this.grams,
       raw: this.raw,
       message: this.message,
+      chipId: this.chipId,
     };
   }
 
@@ -128,16 +124,16 @@ export class UsbScale {
       throw new Error("Web Serial indisponible");
     }
     this.status = "connecting";
-    this.message = "Choisissez la balance dans la liste (FT232R / USB Serial)…";
+    this.chipId = "";
+    this.message = "Choisissez la balance dans la liste…";
     this.emit();
 
     /** @type {SerialPort} */
     let port;
     try {
       const granted = await navigator.serial.getPorts();
-      port =
-        granted.find((p) => isLikelyScale(p)) ||
-        (await navigator.serial.requestPort({ filters: PORT_FILTERS }));
+      port = granted[0] || (await navigator.serial.requestPort());
+      this.chipId = formatChipId(port);
     } catch (err) {
       this.status = "idle";
       this.message =
@@ -254,6 +250,7 @@ export class UsbScale {
     this.status = "idle";
     this.grams = null;
     this.raw = "";
+    this.chipId = "";
     this.message = "Balance USB déconnectée";
     this.emit();
   }
@@ -285,6 +282,7 @@ export class UsbScale {
     this.reader = null;
     this.status = "idle";
     this.grams = null;
+    this.chipId = "";
     this.message = "Balance débranchée";
     this.emit();
   }
@@ -313,11 +311,18 @@ function withTimeout(promise, ms, message) {
   });
 }
 
-function isLikelyScale(port) {
-  const info = port.getInfo?.() || {};
+/**
+ * @param {SerialPort} port
+ * @returns {string} « vvvv:pppp » en hexadécimal, ou une chaîne vide
+ */
+export function formatChipId(port) {
+  const info = port?.getInfo?.() || {};
   const vid = info.usbVendorId;
-  if (!vid) return true;
-  return PORT_FILTERS.some((f) => f.usbVendorId === vid);
+  const pid = info.usbProductId;
+  if (typeof vid !== "number") return "";
+  const hex = (n) => n.toString(16).padStart(4, "0");
+  if (typeof pid !== "number") return hex(vid);
+  return `${hex(vid)}:${hex(pid)}`;
 }
 
 /** @param {number} grams */

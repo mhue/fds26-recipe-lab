@@ -473,6 +473,7 @@ function viewWeigh() {
     </div>
     <div class="scale-bar" data-state="${usbScale.status}">
       <p id="scale-status" class="scale-status">${escapeHtml(usbScale.message)}</p>
+      <p id="scale-chip" class="scale-chip">${escapeHtml(usbScale.chipId)}</p>
       ${
         serialSupported()
           ? `<button type="button" class="btn ghost" id="btn-scale">${
@@ -1034,6 +1035,8 @@ function applyScaleToWeighUi(evt) {
   const bar = statusEl?.closest(".scale-bar");
   const btn = /** @type {HTMLButtonElement|null} */ (document.getElementById("btn-scale"));
   if (statusEl) statusEl.textContent = evt.message;
+  const chipEl = document.getElementById("scale-chip");
+  if (chipEl) chipEl.textContent = evt.chipId || "";
   if (bar) bar.setAttribute("data-state", evt.status);
   if (btn) {
     const open = evt.status === "open" || evt.status === "connecting";
