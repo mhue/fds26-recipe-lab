@@ -475,6 +475,11 @@ function viewWeigh() {
     <div class="weigh-visual">
       <img class="weigh-photo" src="${foodImage(food)}" alt="" width="280" height="280" />
     </div>
+    <label class="field weigh-field">
+      <span>Masse (grammes) — balance USB ou pavé</span>
+      <input id="grams-input" type="number" inputmode="decimal" min="1" max="2000" step="1"
+        placeholder="ex. 120" value="${escapeAttr(state.weighDraft)}" />
+    </label>
     <details class="fold scale-fold" id="scale-fold" data-connected="${scaleConnected ? "true" : "false"}" ${scaleConnected ? "" : "open"}>
       <summary>Balance connectée</summary>
       <div class="scale-bar" data-state="${usbScale.status}">
@@ -491,11 +496,6 @@ function viewWeigh() {
         }
       </div>
     </details>
-    <label class="field weigh-field">
-      <span>Masse (grammes) — balance USB ou pavé</span>
-      <input id="grams-input" type="number" inputmode="decimal" min="1" max="2000" step="1"
-        placeholder="ex. 120" value="${escapeAttr(state.weighDraft)}" />
-    </label>
     <details class="fold pad-fold" id="pad-fold" data-connected="${scaleConnected ? "true" : "false"}" ${scaleConnected ? "" : "open"}>
       <summary>Pavé numérique</summary>
       <div class="pad" aria-label="Pavé numérique">
