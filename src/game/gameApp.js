@@ -244,7 +244,7 @@ function viewSetup() {
     if (!name) return;
     state.teamName = name.slice(0, 24);
     state.plate = [];
-    state.skipped = [];
+    state.skipped = defaultSkipped();
     state.resultSaved = false;
     state.lastResult = null;
     go("compose");
@@ -372,6 +372,12 @@ function viewCompose() {
         rm.textContent = "×";
         rm.addEventListener("click", () => {
           state.plate = state.plate.filter((p) => p.foodId !== row.item.foodId);
+          const stillThere = state.plate.some(
+            (p) => FOODS.find((f) => f.id === p.foodId)?.category === row.food.category,
+          );
+          if (!stillThere && !state.skipped.includes(row.food.category)) {
+            state.skipped.push(row.food.category);
+          }
           render();
         });
         li.appendChild(rm);
@@ -464,6 +470,18 @@ function viewWeigh() {
   const liveGrams = parseGrams(state.weighDraft);
   const imp = liveGrams > 0 ? impactFor(food, liveGrams) : null;
 
+  const back = el("button", { type: "button", class: "btn ghost" });
+  back.textContent = "Retour";
+  back.addEventListener("click", () => go("compose"));
+
+  const save = el("button", { type: "button", class: "btn primary" });
+  save.textContent = "Ajouter à l’assiette";
+  save.addEventListener("click", () => confirmWeigh(food));
+
+  const row = el("div", { class: "btn-row weigh-actions" });
+  row.append(back, save);
+  v.appendChild(row);
+
   v.appendChild(
     titleBlock(`Peser : ${food.name}`, food.tip + " · Données Agribalyse® ADEME."),
   );
@@ -542,18 +560,7 @@ function viewWeigh() {
     });
   });
 
-  const back = el("button", { type: "button", class: "btn ghost" });
-  back.textContent = "Retour";
-  back.addEventListener("click", () => go("compose"));
-
-  const save = el("button", { type: "button", class: "btn primary" });
-  save.textContent = "Ajouter à l’assiette";
-  save.addEventListener("click", () => confirmWeigh(food));
-
-  const row = el("div", { class: "btn-row" });
-  row.append(back, save);
-
-  v.append(panel, row);
+  v.appendChild(panel);
   queueMicrotask(() => {
     const i = /** @type {HTMLInputElement|null} */ (document.getElementById("grams-input"));
     i?.focus();
@@ -706,7 +713,7 @@ function viewResult() {
   again.addEventListener("click", () => {
     state.teamName = "";
     state.plate = [];
-    state.skipped = [];
+    state.skipped = defaultSkipped();
     state.resultSaved = false;
     state.lastResult = null;
     go("setup");
@@ -1072,6 +1079,10 @@ function barColor(hue) {
   if (lum < 0.93) return hue;
   const shade = (channel) => Math.round(channel * 0.55).toString(16).padStart(2, "0");
   return `#${shade(r)}${shade(g)}${shade(b)}`;
+}
+
+function defaultSkipped() {
+  return CATEGORIES.map((c) => c.id);
 }
 
 /** @param {string} categoryId */

@@ -492,6 +492,19 @@ body {
   gap: 0.6rem;
 }
 
+.weigh-actions {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.35rem 0 0.7rem;
+  background: linear-gradient(
+    180deg,
+    #e8f0ea 70%,
+    rgba(232, 240, 234, 0.92) 88%,
+    rgba(232, 240, 234, 0) 100%
+  );
+}
+
 .btn-row.wrap {
   margin-top: 0.25rem;
 }
