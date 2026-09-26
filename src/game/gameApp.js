@@ -475,11 +475,16 @@ function viewWeigh() {
     <div class="weigh-visual">
       <img class="weigh-photo" src="${foodImage(food)}" alt="" width="280" height="280" />
     </div>
-    <label class="field weigh-field">
-      <span>Masse (grammes) — balance USB ou pavé</span>
-      <input id="grams-input" type="number" inputmode="decimal" min="1" max="2000" step="1"
-        placeholder="ex. 120" value="${escapeAttr(state.weighDraft)}" />
-    </label>
+    <div class="weigh-measure">
+      <label class="field weigh-field">
+        <span>Masse (grammes) — balance USB ou pavé</span>
+        <input id="grams-input" type="number" inputmode="decimal" min="1" max="2000" step="1"
+          placeholder="ex. 120" value="${escapeAttr(state.weighDraft)}" />
+      </label>
+      <p class="live-impact ${imp ? "" : "is-empty"}">
+        ${imp ? liveImpactHtml(imp) : liveImpactEmpty()}
+      </p>
+    </div>
     <details class="fold scale-fold" id="scale-fold" data-connected="${scaleConnected ? "true" : "false"}" ${scaleConnected ? "" : "open"}>
       <summary>Balance connectée</summary>
       <div class="scale-bar" data-state="${usbScale.status}">
@@ -504,9 +509,6 @@ function viewWeigh() {
           .join("")}
       </div>
     </details>
-    <p class="live-impact ${imp ? "" : "is-empty"}">
-      ${imp ? liveImpactHtml(imp) : "Entrez le poids pour voir l’impact"}
-    </p>
   `;
 
   const input = /** @type {HTMLInputElement} */ (panel.querySelector("#grams-input"));
@@ -516,7 +518,7 @@ function viewWeigh() {
     const g = parseGrams(state.weighDraft);
     const next = g > 0 ? impactFor(food, g) : null;
     liveEl.classList.toggle("is-empty", !next);
-    liveEl.innerHTML = next ? liveImpactHtml(next) : "Entrez le poids pour voir l’impact";
+    liveEl.innerHTML = next ? liveImpactHtml(next) : liveImpactEmpty();
   };
   input.addEventListener("input", refreshLive);
 
@@ -904,6 +906,10 @@ function challengeNote() {
 function portionLine(grams, imp) {
   if (state.mode === "energie") return `${grams} g · ${Math.round(imp.kcal)} kcal`;
   return `${grams} g · ${fmtCo2(imp.co2g)}`;
+}
+
+function liveImpactEmpty() {
+  return state.mode === "energie" ? "— kcal" : "—";
 }
 
 /** @param {{ co2g: number, kcal: number }} imp */

@@ -575,6 +575,18 @@ legend {
   font-weight: 700;
 }
 
+.weigh-measure {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+
+.weigh-measure .weigh-field {
+  margin-bottom: 0;
+}
+
 .field input {
   font: inherit;
   font-weight: 700;
@@ -951,9 +963,13 @@ legend {
 }
 
 .live-impact {
-  margin: 0 0 0.75rem;
-  min-height: 1.5rem;
-  font-size: 1.05rem;
+  margin: 0 0 0.15rem;
+  min-height: 0;
+  padding-bottom: 0.85rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 4vw, 1.8rem);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .live-impact.is-empty {
