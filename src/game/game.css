@@ -244,7 +244,19 @@ body {
   letter-spacing: -0.03em;
 }
 
-.home-view .level-target span {
+.level-figure {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.28rem;
+}
+
+.level-figure > span {
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 3.2vw, 1.45rem);
+  font-weight: 700;
+}
+
+.home-view .level-when {
   margin-top: 0.2rem;
   font-size: 0.82rem;
   font-weight: 800;

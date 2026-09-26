@@ -179,7 +179,7 @@ function viewHome() {
               `<button type="button" class="chip ${state.levelId === item.id ? "is-on" : ""}" data-level="${item.id}">${item.label}</button>`,
           ).join("")}
         </div>
-        <p class="level-target"><strong class="level-kcal">${target}</strong><span>kcal au déjeuner</span></p>
+        <p class="level-target"><span class="level-figure"><strong class="level-kcal">${target}</strong><span>kcal</span></span><span class="level-when">au déjeuner</span></p>
       </div>
     </fieldset>
     <div class="activity-list">
