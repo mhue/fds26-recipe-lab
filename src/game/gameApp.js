@@ -197,8 +197,17 @@ function viewHome() {
   `;
   v.querySelectorAll("[data-level]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      state.levelId = /** @type {import('./levels.js').LevelId} */ (btn.getAttribute("data-level") || "cp");
-      render();
+      const next = /** @type {import('./levels.js').LevelId} */ (btn.getAttribute("data-level") || "cp");
+      if (next === state.levelId) return;
+      state.levelId = next;
+      v.querySelectorAll("[data-level]").forEach((chip) => {
+        chip.classList.toggle("is-on", chip === btn);
+      });
+      const target = lunchKcal(state.levelId);
+      const line = v.querySelector(".level-target");
+      if (line) line.innerHTML = `Cible du défi énergie : <strong>${target} kcal</strong> au déjeuner.`;
+      const energy = v.querySelector("[data-act=energie] span");
+      if (energy) energy.textContent = `Ni trop, ni trop peu : juste les ${target} kcal du niveau.`;
     });
   });
   v.querySelector("[data-act=energie]")?.addEventListener("click", () => {
@@ -271,8 +280,20 @@ function viewSetup() {
 
   form.querySelectorAll("[data-level]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      state.levelId = /** @type {import('./levels.js').LevelId} */ (btn.getAttribute("data-level") || "cp");
-      go("setup");
+      const next = /** @type {import('./levels.js').LevelId} */ (btn.getAttribute("data-level") || "cp");
+      if (next === state.levelId) return;
+      state.levelId = next;
+      const level = currentLevel();
+      const target = lunchKcal(level.id);
+      form.querySelectorAll("[data-level]").forEach((chip) => {
+        chip.classList.toggle("is-on", chip === btn);
+      });
+      const line = form.querySelector(".level-target");
+      if (!line) return;
+      line.innerHTML =
+        state.mode === "energie"
+          ? `${level.label}, ${level.age} ans : environ ${level.dailyKcal.toLocaleString("fr-FR")} kcal par jour. Le déjeuner en prend 35 %, soit <strong>${target} kcal</strong>.`
+          : `Classe de ${level.label}. Ici on ne compte que le CO₂.`;
     });
   });
   form.querySelectorAll("[data-color]").forEach((btn) => {
