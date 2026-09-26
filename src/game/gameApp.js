@@ -956,22 +956,30 @@ function climateGoal(co2g) {
  * @param {{ kind: string, label: string, valueText: string, fill: number, mark: number|null, caption: string, compact?: boolean, shares?: FoodShare[] }} goal
  */
 function goalBarHtml(goal) {
-  const split = Boolean(goal.shares?.length);
+  const shares = goal.shares || [];
+  const split = shares.length > 0;
   const mark =
     goal.mark == null
       ? ""
       : `<b class="goal-mark" style="left:${goal.mark.toFixed(1)}%" title="Cible"></b>`;
-  const track = `<div class="goal-track" aria-hidden="true">
-        <i style="width:${goal.fill.toFixed(1)}%"></i>
-        ${mark}
-      </div>`;
-  const shares = split ? shareHistHtml(goal.shares || []) : "";
+  const fill = split
+    ? `<span class="goal-stack">${shares
+        .map((share) => {
+          const width = (share.width / 100) * goal.fill;
+          return `<i style="width:${width.toFixed(1)}%;background:${share.hue}" title="${escapeAttr(`${share.name} · ${share.text}`)}"></i>`;
+        })
+        .join("")}</span>`
+    : `<i style="width:${goal.fill.toFixed(1)}%"></i>`;
+  const legend = split ? shareLegendHtml(shares) : "";
   return `
     <div class="goal-bar ${goal.compact ? "is-compact" : ""} ${split ? "is-split" : ""} ${goal.kind === "kcal" ? "is-kcal" : "is-co2"}">
       <div class="goal-top"><span>${escapeHtml(goal.label)}</span><strong>${escapeHtml(goal.valueText)}</strong></div>
-      ${track}
+      <div class="goal-track">
+        ${fill}
+        ${mark}
+      </div>
       <p class="goal-caption">${escapeHtml(goal.caption)}</p>
-      ${shares}
+      ${legend}
     </div>
   `;
 }
@@ -983,25 +991,22 @@ function goalBarHtml(goal) {
 /**
  * @param {FoodShare[]} shares
  */
-function shareHistHtml(shares) {
-  return `<ul class="goal-hist" aria-label="Part de chaque aliment">
+function shareLegendHtml(shares) {
+  return `<ul class="goal-legend" aria-label="Part de chaque aliment">
     ${shares
       .map(
         (share) => `<li>
-        <span class="goal-hist-name">${escapeHtml(share.name)}</span>
-        <span class="goal-hist-track">
-          <i style="width:${share.width.toFixed(1)}%;background:${share.hue}"></i>
-        </span>
-        <strong class="goal-hist-val">${escapeHtml(share.text)}</strong>
+        <i style="background:${share.hue}"></i>
+        <span>${escapeHtml(share.name)}</span>
+        <strong>${escapeHtml(share.text)}</strong>
       </li>`,
       )
       .join("")}
-  </ul>
-  <p class="goal-caption">Chaque barre est la part de cet aliment.</p>`;
+  </ul>`;
 }
 
 /**
- * Once the plate is complete, keep the total bar and add each food’s share.
+ * Once the plate is complete, draw each food as a segment of the total bar.
  * @param {{ kind: string, label: string, valueText: string, fill: number, mark: number|null, caption: string, compact?: boolean }} goal
  * @param {{ foodId: string, foodName?: string, kcal: number, co2g: number }[]} items
  */
