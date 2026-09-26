@@ -469,34 +469,41 @@ function viewWeigh() {
     titleBlock(`Peser : ${food.name}`, food.tip + " · Données Agribalyse® ADEME."),
   );
 
+  const scaleConnected = usbScale.status === "open";
   const panel = el("div", { class: "weigh-panel" });
   panel.innerHTML = `
     <div class="weigh-visual">
       <img class="weigh-photo" src="${foodImage(food)}" alt="" width="280" height="280" />
     </div>
-    <div class="scale-bar" data-state="${usbScale.status}">
-      <p id="scale-status" class="scale-status">${escapeHtml(usbScale.message)}</p>
-      <p id="scale-chip" class="scale-chip">${escapeHtml(usbScale.chipId)}</p>
-      ${
-        serialSupported()
-          ? `<button type="button" class="btn ghost" id="btn-scale">${
-              usbScale.status === "open" || usbScale.status === "connecting"
-                ? "Déconnecter"
-                : "Connecter la balance USB"
-            }</button>`
-          : ""
-      }
-    </div>
+    <details class="fold scale-fold" id="scale-fold" data-connected="${scaleConnected ? "true" : "false"}" ${scaleConnected ? "" : "open"}>
+      <summary>Balance connectée</summary>
+      <div class="scale-bar" data-state="${usbScale.status}">
+        <p id="scale-status" class="scale-status">${escapeHtml(usbScale.message)}</p>
+        <p id="scale-chip" class="scale-chip">${escapeHtml(usbScale.chipId)}</p>
+        ${
+          serialSupported()
+            ? `<button type="button" class="btn ghost" id="btn-scale">${
+                usbScale.status === "open" || usbScale.status === "connecting"
+                  ? "Déconnecter"
+                  : "Connecter la balance USB"
+              }</button>`
+            : ""
+        }
+      </div>
+    </details>
     <label class="field weigh-field">
       <span>Masse (grammes) — balance USB ou pavé</span>
       <input id="grams-input" type="number" inputmode="decimal" min="1" max="2000" step="1"
         placeholder="ex. 120" value="${escapeAttr(state.weighDraft)}" />
     </label>
-    <div class="pad" aria-label="Pavé numérique">
-      ${[1, 2, 3, 4, 5, 6, 7, 8, 9, "⌫", 0, "OK"]
-        .map((k) => `<button type="button" class="pad-key" data-k="${k}">${k}</button>`)
-        .join("")}
-    </div>
+    <details class="fold pad-fold" id="pad-fold" data-connected="${scaleConnected ? "true" : "false"}" ${scaleConnected ? "" : "open"}>
+      <summary>Pavé numérique</summary>
+      <div class="pad" aria-label="Pavé numérique">
+        ${[1, 2, 3, 4, 5, 6, 7, 8, 9, "⌫", 0, "OK"]
+          .map((k) => `<button type="button" class="pad-key" data-k="${k}">${k}</button>`)
+          .join("")}
+      </div>
+    </details>
     <p class="live-impact ${imp ? "" : "is-empty"}">
       ${imp ? liveImpactHtml(imp) : "Entrez le poids pour voir l’impact"}
     </p>
@@ -1156,6 +1163,16 @@ function fmtCo2(co2g) {
   return `${(co2g / 1000).toFixed(2)} kg CO₂e`;
 }
 
+/** Collapse the keypad and the balance block once the scale is connected. */
+function setWeighFolds(connected) {
+  for (const id of ["scale-fold", "pad-fold"]) {
+    const fold = document.getElementById(id);
+    if (!fold || fold.dataset.connected === String(connected)) continue;
+    fold.dataset.connected = String(connected);
+    fold.open = !connected;
+  }
+}
+
 /** @param {import('./usbScale.js').ScaleEvent} evt */
 function applyScaleToWeighUi(evt) {
   if (state.screen !== "weigh") return;
@@ -1171,6 +1188,7 @@ function applyScaleToWeighUi(evt) {
     btn.textContent = open ? "Déconnecter" : "Connecter la balance USB";
     btn.disabled = evt.status === "connecting";
   }
+  setWeighFolds(evt.status === "open");
   if (evt.status !== "open" || evt.grams == null) return;
   const input = /** @type {HTMLInputElement|null} */ (document.getElementById("grams-input"));
   if (!input) return;

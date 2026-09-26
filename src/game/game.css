@@ -798,6 +798,55 @@ legend {
   );
 }
 
+.fold {
+  margin: 0;
+}
+
+.fold > summary {
+  display: none;
+}
+
+.fold:not([open]) > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  list-style: none;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0.7rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.fold:not([open]) > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fold:not([open]) > summary::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  flex: none;
+}
+
+.scale-fold:not([open]) {
+  margin-bottom: 0.9rem;
+}
+
+.scale-fold:not([open]) > summary {
+  color: var(--accent);
+  border-color: rgba(31, 122, 85, 0.35);
+  background: rgba(31, 122, 85, 0.08);
+}
+
+.pad-fold:not([open]) {
+  margin: 0.35rem 0 0.75rem;
+}
+
 .scale-bar {
   display: grid;
   gap: 0.45rem;
