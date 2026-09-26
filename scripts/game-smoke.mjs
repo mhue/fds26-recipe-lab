@@ -2,7 +2,13 @@ import { CATEGORIES, FOODS, impactFor } from "../src/game/foods.js";
 import { lunchKcal } from "../src/game/levels.js";
 import { computeScore } from "../src/game/teams.js";
 import { NUTRISCORE_GRADES, NUTRISCORE_QUIZ } from "../src/game/nutriscore.js";
-import { formatChipId, formatGrams, parseScaleLine } from "../src/game/usbScale.js";
+import {
+  formatChipId,
+  formatGrams,
+  isUsbSerialPort,
+  parseScaleLine,
+  selectGrantedScalePort,
+} from "../src/game/usbScale.js";
 
 // 100 g de lentilles cuites ≈ 66 g CO₂e
 const lentilles = FOODS.find((f) => f.id === "lentilles");
@@ -85,6 +91,7 @@ if (NUTRISCORE_GRADES.length !== 5 || NUTRISCORE_QUIZ.length < 3) {
 
 const scaleLines = [
   [" +14.850g", 14.85],
+  ["+    31.28g", 31.28],
   ["ST,GS,+  120.0 g", 120],
   ["0.125 kg", 125],
   ["  45,6", 45.6],
@@ -105,12 +112,25 @@ for (const [line, expected] of scaleLines) {
     process.exit(1);
   }
 }
-if (formatChipId({ getInfo: () => ({ usbVendorId: 0x0403, usbProductId: 0x6001 }) }) !== "0403:6001") {
-  console.error("formatChipId fail");
+const ftdi = { getInfo: () => ({ usbVendorId: 0x0403, usbProductId: 0x6001 }) };
+const bluetooth = { getInfo: () => ({}) };
+if (formatChipId(ftdi) !== "FT232R USB UART · 0403:6001") {
+  console.error("formatChipId fail", formatChipId(ftdi));
   process.exit(1);
 }
-if (formatChipId({ getInfo: () => ({}) }) !== "") {
+if (formatChipId(bluetooth) !== "") {
   console.error("formatChipId empty fail");
+  process.exit(1);
+}
+if (!isUsbSerialPort(ftdi) || isUsbSerialPort(bluetooth)) {
+  console.error("isUsbSerialPort fail");
+  process.exit(1);
+}
+const onlyBluetooth = selectGrantedScalePort([bluetooth]);
+const onlyFtdi = selectGrantedScalePort([bluetooth, ftdi]);
+const twoUsb = selectGrantedScalePort([ftdi, { getInfo: () => ({ usbVendorId: 0x1a86, usbProductId: 0x7523 }) }]);
+if (onlyBluetooth !== null || onlyFtdi !== ftdi || twoUsb !== null) {
+  console.error("selectGrantedScalePort fail");
   process.exit(1);
 }
 if (formatGrams(14.85) !== "14.9" || formatGrams(120) !== "120") {

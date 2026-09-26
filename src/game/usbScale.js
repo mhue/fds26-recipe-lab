@@ -1,11 +1,19 @@
 /**
  * Lecture d’une balance USB via Web Serial.
- * Tous les adaptateurs série sont proposés : l’identifiant USB
- * s’affiche une fois le port choisi.
+ * Sur macOS, Chrome propose aussi « Bluetooth-Incoming-Port », qui
+ * n’envoie rien. On ne garde que les adaptateurs USB (FT232R, etc.).
  *
  * Réglages balance (USS-DBS / clone) : C5-0 continu ou C5-2 + UNIT.
  * Liaison : 9600 8N1.
  */
+
+/** Adaptateurs USB-série courants. Le Bluetooth système n’a pas de vendor id. */
+export const USB_SERIAL_FILTERS = [
+  { usbVendorId: 0x0403 }, // FTDI FT232R — « FT232R USB UART »
+  { usbVendorId: 0x1a86 }, // QinHeng CH340
+  { usbVendorId: 0x10c4 }, // Silicon Labs CP210x
+  { usbVendorId: 0x067b }, // Prolific PL2303
+];
 
 const BAUD = 9600;
 const OPEN_TIMEOUT_MS = 4000;
@@ -125,14 +133,20 @@ export class UsbScale {
     }
     this.status = "connecting";
     this.chipId = "";
-    this.message = "Choisissez la balance dans la liste…";
+    this.message = "Recherche de la balance USB…";
     this.emit();
 
     /** @type {SerialPort} */
     let port;
     try {
       const granted = await navigator.serial.getPorts();
-      port = granted[0] || (await navigator.serial.requestPort());
+      await forgetNonUsbPorts(granted);
+      port = selectGrantedScalePort(granted);
+      if (!port) {
+        this.message = "Choisissez « FT232R USB UART », pas le port Bluetooth…";
+        this.emit();
+        port = await navigator.serial.requestPort({ filters: USB_SERIAL_FILTERS });
+      }
       this.chipId = formatChipId(port);
     } catch (err) {
       this.status = "idle";
@@ -313,7 +327,56 @@ function withTimeout(promise, ms, message) {
 
 /**
  * @param {SerialPort} port
- * @returns {string} « vvvv:pppp » en hexadécimal, ou une chaîne vide
+ * @returns {boolean}
+ */
+export function isUsbSerialPort(port) {
+  const vid = port?.getInfo?.()?.usbVendorId;
+  return USB_SERIAL_FILTERS.some((filter) => filter.usbVendorId === vid);
+}
+
+/**
+ * Port USB déjà autorisé, seulement s’il n’y en a qu’un.
+ * Sinon il faut rouvrir le sélecteur (plusieurs balances, ou seulement Bluetooth).
+ *
+ * @param {SerialPort[]} ports
+ * @returns {SerialPort|null}
+ */
+export function selectGrantedScalePort(ports) {
+  const usb = ports.filter(isUsbSerialPort);
+  return usb.length === 1 ? usb[0] : null;
+}
+
+/**
+ * Retire l’autorisation du port Bluetooth choisi par erreur,
+ * pour qu’il ne soit plus repris automatiquement.
+ *
+ * @param {SerialPort[]} ports
+ */
+async function forgetNonUsbPorts(ports) {
+  await Promise.all(
+    ports
+      .filter((port) => !isUsbSerialPort(port) && typeof port.forget === "function")
+      .map((port) => port.forget().catch(() => {})),
+  );
+}
+
+/**
+ * @param {number} vid
+ * @param {number|undefined} pid
+ * @returns {string}
+ */
+function usbPortLabel(vid, pid) {
+  if (vid === 0x0403 && pid === 0x6001) return "FT232R USB UART";
+  if (vid === 0x0403) return "FTDI USB UART";
+  if (vid === 0x1a86) return "CH340";
+  if (vid === 0x10c4) return "CP210x";
+  if (vid === 0x067b) return "Prolific";
+  return "";
+}
+
+/**
+ * @param {SerialPort} port
+ * @returns {string} nom lisible et « vvvv:pppp », ou une chaîne vide
  */
 export function formatChipId(port) {
   const info = port?.getInfo?.() || {};
@@ -321,8 +384,9 @@ export function formatChipId(port) {
   const pid = info.usbProductId;
   if (typeof vid !== "number") return "";
   const hex = (n) => n.toString(16).padStart(4, "0");
-  if (typeof pid !== "number") return hex(vid);
-  return `${hex(vid)}:${hex(pid)}`;
+  const id = typeof pid === "number" ? `${hex(vid)}:${hex(pid)}` : hex(vid);
+  const label = usbPortLabel(vid, typeof pid === "number" ? pid : undefined);
+  return label ? `${label} · ${id}` : id;
 }
 
 /** @param {number} grams */
