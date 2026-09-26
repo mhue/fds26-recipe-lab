@@ -948,6 +948,44 @@ legend {
   color: var(--muted);
 }
 
+.energy-callout {
+  margin: 0;
+  padding: 0.85rem 1rem 0.95rem;
+  border-radius: 20px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: clamp(2.8rem, 10vw, 4.6rem);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  background: #fff;
+  border: 3px solid var(--line);
+}
+
+.energy-callout.is-low {
+  color: var(--accent-2);
+  border-color: rgba(26, 111, 140, 0.45);
+  background: #f3f8fb;
+}
+
+.energy-callout.is-ok {
+  color: var(--accent);
+  border-color: rgba(31, 122, 85, 0.4);
+  background: #f3faf6;
+}
+
+.energy-callout.is-high {
+  color: var(--warn);
+  border-color: rgba(184, 90, 26, 0.45);
+  background: #fdf6f0;
+}
+
+.energy-callout.is-over {
+  color: var(--danger);
+  border-color: rgba(166, 61, 64, 0.45);
+  background: #fdf4f4;
+}
+
 .verdict {
   margin: 0;
   font-weight: 800;

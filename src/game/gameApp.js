@@ -606,18 +606,14 @@ function viewResult() {
 
   const v = el("section", { class: "view result-view" });
   const gap = Math.abs(Math.round(totals.kcal) - target);
-  const verdict =
-    state.mode === "climat"
-      ? totals.co2g < 400
-        ? "Bravo : assiette légère pour la planète !"
-        : totals.co2g < 900
-          ? "Bien joué — on peut encore alléger le CO₂."
-          : "Fort impact : essayez plus de légumes et de légumineuses."
-      : gap <= 40
-        ? `Juste ce qu’il faut. Écart de ${gap} kcal.`
-        : totals.kcal < target
-          ? `Un peu trop peu. Écart de ${gap} kcal : un écart plus petit serait meilleur.`
-          : `Un peu trop. Écart de ${gap} kcal : un écart plus petit serait meilleur.`;
+  const energy = state.mode === "energie" ? energyVerdict(totals.kcal, target) : null;
+  const verdict = energy
+    ? energy.detail
+    : totals.co2g < 400
+      ? "Bravo : assiette légère pour la planète !"
+      : totals.co2g < 900
+        ? "Bien joué — on peut encore alléger le CO₂."
+        : "Fort impact : essayez plus de légumes et de légumineuses.";
 
   const bar = goalBarHtml(
     withShares(
@@ -629,6 +625,7 @@ function viewResult() {
   v.innerHTML = `
     <p class="team-pill" style="--team:${state.teamColor}"><span></span>${escapeHtml(state.teamName)}</p>
     <h2>Résultat du repas</h2>
+    ${energy ? `<p class="energy-callout is-${energy.tone}">${energy.label}</p>` : ""}
     <p class="verdict">${verdict}</p>
     ${
       state.mode === "energie"
@@ -906,6 +903,44 @@ function portionLine(grams, imp) {
 function liveImpactHtml(imp) {
   if (state.mode === "energie") return `<strong>${Math.round(imp.kcal)} kcal</strong>`;
   return `<strong>${fmtCo2(imp.co2g)}</strong>`;
+}
+
+/**
+ * Headline for the energy défi. Within 40 kcal is on target.
+ * A little over, up to 100 kcal, is “un peu trop”; beyond that is “trop”.
+ * @param {number} kcal
+ * @param {number} target
+ * @returns {{ label: string, tone: 'low'|'ok'|'high'|'over', detail: string }}
+ */
+function energyVerdict(kcal, target) {
+  const delta = Math.round(kcal) - target;
+  const gap = Math.abs(delta);
+  if (delta < -40) {
+    return {
+      label: "Trop peu",
+      tone: "low",
+      detail: `Écart de ${gap} kcal sous la cible de ${target} kcal.`,
+    };
+  }
+  if (delta <= 40) {
+    return {
+      label: "Juste",
+      tone: "ok",
+      detail: `Écart de ${gap} kcal : juste ce qu’il faut.`,
+    };
+  }
+  if (delta <= 100) {
+    return {
+      label: "Un peu trop",
+      tone: "high",
+      detail: `Écart de ${gap} kcal au-dessus de la cible de ${target} kcal.`,
+    };
+  }
+  return {
+    label: "Trop",
+    tone: "over",
+    detail: `Écart de ${gap} kcal au-dessus de la cible de ${target} kcal.`,
+  };
 }
 
 /** @param {number} kcal @param {number} target */
