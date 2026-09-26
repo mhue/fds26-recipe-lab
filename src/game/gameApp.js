@@ -339,49 +339,32 @@ function viewCompose() {
       : `Encore à choisir : ${missing.map((m) => m.label.toLowerCase()).join(", ")}.`;
   v.appendChild(checklist);
 
-  const rows = plateRows();
-  if (rows.length) {
+  const chosen = plateRows().filter((row) => row.kind === "food");
+  if (chosen.length) {
     const plate = el("ul", { class: "plate-list" });
-    for (const row of rows) {
+    for (const row of chosen) {
+      const imp = impactFor(row.food, row.item.grams);
       const li = el("li", { class: "plate-item" });
-      if (row.kind === "rien") {
-        li.innerHTML = `
-          <span class="food-thumb rien-thumb" aria-hidden="true">—</span>
-          <div>
-            <strong>Rien</strong>
-            <span>${escapeHtml(row.category.label)}</span>
-          </div>
-        `;
-        const rm = el("button", { type: "button", class: "icon-btn", "aria-label": "Retirer" });
-        rm.textContent = "×";
-        rm.addEventListener("click", () => {
-          state.skipped = state.skipped.filter((id) => id !== row.category.id);
-          render();
-        });
-        li.appendChild(rm);
-      } else {
-        const imp = impactFor(row.food, row.item.grams);
-        li.innerHTML = `
-          <img class="food-thumb" src="${foodImage(row.food)}" alt="" width="48" height="48" />
-          <div>
-            <strong>${escapeHtml(row.food.name)}</strong>
-            <span>${portionLine(row.item.grams, imp)}</span>
-          </div>
-        `;
-        const rm = el("button", { type: "button", class: "icon-btn", "aria-label": "Retirer" });
-        rm.textContent = "×";
-        rm.addEventListener("click", () => {
-          state.plate = state.plate.filter((p) => p.foodId !== row.item.foodId);
-          const stillThere = state.plate.some(
-            (p) => FOODS.find((f) => f.id === p.foodId)?.category === row.food.category,
-          );
-          if (!stillThere && !state.skipped.includes(row.food.category)) {
-            state.skipped.push(row.food.category);
-          }
-          render();
-        });
-        li.appendChild(rm);
-      }
+      li.innerHTML = `
+        <img class="food-thumb" src="${foodImage(row.food)}" alt="" width="48" height="48" />
+        <div>
+          <strong>${escapeHtml(row.food.name)}</strong>
+          <span>${portionLine(row.item.grams, imp)}</span>
+        </div>
+      `;
+      const rm = el("button", { type: "button", class: "icon-btn", "aria-label": "Retirer" });
+      rm.textContent = "×";
+      rm.addEventListener("click", () => {
+        state.plate = state.plate.filter((p) => p.foodId !== row.item.foodId);
+        const stillThere = state.plate.some(
+          (p) => FOODS.find((f) => f.id === p.foodId)?.category === row.food.category,
+        );
+        if (!stillThere && !state.skipped.includes(row.food.category)) {
+          state.skipped.push(row.food.category);
+        }
+        render();
+      });
+      li.appendChild(rm);
       plate.appendChild(li);
     }
     v.appendChild(plate);
@@ -680,29 +663,23 @@ function viewResult() {
     </div>
   `;
 
-  const detail = el("ul", { class: "plate-list" });
-  for (const item of saved.items) {
-    const food = FOODS.find((f) => f.id === item.foodId);
-    const rien = item.foodId.startsWith("rien:");
-    const li = el("li", { class: "plate-item" });
-    li.innerHTML = `
-      ${
-        rien
-          ? `<span class="food-thumb rien-thumb" aria-hidden="true">—</span>`
-          : `<img class="food-thumb" src="${food ? foodImage(food) : ""}" alt="" width="48" height="48" />`
-      }
-      <div>
-        <strong>${escapeHtml(item.foodName)}</strong>
-        <span>${
-          rien
-            ? "Choix : rien"
-            : portionLine(item.grams, { co2g: item.co2g, kcal: item.kcal })
-        }</span>
-      </div>
-    `;
-    detail.appendChild(li);
+  const chosenItems = saved.items.filter((item) => !item.foodId.startsWith("rien:"));
+  if (chosenItems.length) {
+    const detail = el("ul", { class: "plate-list" });
+    for (const item of chosenItems) {
+      const food = FOODS.find((f) => f.id === item.foodId);
+      const li = el("li", { class: "plate-item" });
+      li.innerHTML = `
+        <img class="food-thumb" src="${food ? foodImage(food) : ""}" alt="" width="48" height="48" />
+        <div>
+          <strong>${escapeHtml(item.foodName)}</strong>
+          <span>${portionLine(item.grams, { co2g: item.co2g, kcal: item.kcal })}</span>
+        </div>
+      `;
+      detail.appendChild(li);
+    }
+    v.appendChild(detail);
   }
-  v.appendChild(detail);
 
   const row = el("div", { class: "btn-row wrap" });
   const board = el("button", { type: "button", class: "btn primary" });
