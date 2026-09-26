@@ -245,6 +245,8 @@ function viewSetup() {
     state.teamName = name.slice(0, 24);
     state.plate = [];
     state.skipped = [];
+    state.resultSaved = false;
+    state.lastResult = null;
     go("compose");
   });
 
@@ -627,10 +629,12 @@ function viewResult() {
           ? `Un peu trop peu. Écart de ${gap} kcal : un écart plus petit serait meilleur.`
           : `Un peu trop. Écart de ${gap} kcal : un écart plus petit serait meilleur.`;
 
-  const bar =
-    state.mode === "energie"
-      ? goalBarHtml(energyGoal(totals.kcal, target))
-      : goalBarHtml(climateGoal(totals.co2g));
+  const bar = goalBarHtml(
+    withShares(
+      state.mode === "energie" ? energyGoal(totals.kcal, target) : climateGoal(totals.co2g),
+      saved.items,
+    ),
+  );
 
   v.innerHTML = `
     <p class="team-pill" style="--team:${state.teamColor}"><span></span>${escapeHtml(state.teamName)}</p>
@@ -882,11 +886,13 @@ function viewNutri() {
 
 function meterBar(totals) {
   const target = lunchKcal(state.levelId);
+  let goal =
+    state.mode === "energie" ? energyGoal(totals.kcal, target) : climateGoal(totals.co2g);
+  if (CATEGORIES.every((c) => categoryChosen(c.id))) {
+    goal = withShares(goal, plateShareItems());
+  }
   const wrap = el("div", { class: "meters" });
-  wrap.innerHTML =
-    state.mode === "energie"
-      ? goalBarHtml(energyGoal(totals.kcal, target))
-      : goalBarHtml(climateGoal(totals.co2g));
+  wrap.innerHTML = goalBarHtml(goal);
   return wrap;
 }
 
@@ -947,23 +953,124 @@ function climateGoal(co2g) {
 }
 
 /**
- * @param {{ kind: string, label: string, valueText: string, fill: number, mark: number|null, caption: string, compact?: boolean }} goal
+ * @param {{ kind: string, label: string, valueText: string, fill: number, mark: number|null, caption: string, compact?: boolean, shares?: FoodShare[] }} goal
  */
 function goalBarHtml(goal) {
+  const split = Boolean(goal.shares?.length);
   const mark =
     goal.mark == null
       ? ""
       : `<b class="goal-mark" style="left:${goal.mark.toFixed(1)}%" title="Cible"></b>`;
-  return `
-    <div class="goal-bar ${goal.compact ? "is-compact" : ""} ${goal.kind === "kcal" ? "is-kcal" : "is-co2"}">
-      <div class="goal-top"><span>${escapeHtml(goal.label)}</span><strong>${escapeHtml(goal.valueText)}</strong></div>
-      <div class="goal-track" aria-hidden="true">
+  const body = split
+    ? shareHistHtml(goal.shares || [])
+    : `<div class="goal-track" aria-hidden="true">
         <i style="width:${goal.fill.toFixed(1)}%"></i>
         ${mark}
-      </div>
+      </div>`;
+  return `
+    <div class="goal-bar ${goal.compact ? "is-compact" : ""} ${split ? "is-split" : ""} ${goal.kind === "kcal" ? "is-kcal" : "is-co2"}">
+      <div class="goal-top"><span>${escapeHtml(goal.label)}</span><strong>${escapeHtml(goal.valueText)}</strong></div>
+      ${body}
       <p class="goal-caption">${escapeHtml(goal.caption)}</p>
     </div>
   `;
+}
+
+/**
+ * @typedef {{ name: string, hue: string, width: number, text: string }} FoodShare
+ */
+
+/**
+ * @param {FoodShare[]} shares
+ */
+function shareHistHtml(shares) {
+  return `<ul class="goal-hist" aria-label="Part de chaque aliment">
+    ${shares
+      .map(
+        (share) => `<li>
+        <span class="goal-hist-name">${escapeHtml(share.name)}</span>
+        <span class="goal-hist-track">
+          <i style="width:${share.width.toFixed(1)}%;background:${share.hue}"></i>
+        </span>
+        <strong class="goal-hist-val">${escapeHtml(share.text)}</strong>
+      </li>`,
+      )
+      .join("")}
+  </ul>`;
+}
+
+/**
+ * Once the plate is complete, replace the total bar with each food’s share.
+ * @param {{ kind: string, label: string, valueText: string, fill: number, mark: number|null, caption: string, compact?: boolean }} goal
+ * @param {{ foodId: string, foodName?: string, kcal: number, co2g: number }[]} items
+ */
+function withShares(goal, items) {
+  const shares = foodShares(items);
+  if (!shares.length) return goal;
+  const lead = "Chaque barre est la part de cet aliment.";
+  const caption =
+    goal.kind === "kcal"
+      ? `${lead} ${goal.caption}`
+      : `${lead} Moins de CO₂ au total, mieux c’est.`;
+  return { ...goal, shares, caption };
+}
+
+/** @returns {{ foodId: string, foodName: string, kcal: number, co2g: number }[]} */
+function plateShareItems() {
+  return state.plate.map((item) => {
+    const food = FOODS.find((f) => f.id === item.foodId);
+    const imp = food ? impactFor(food, item.grams) : { kcal: 0, co2g: 0 };
+    return {
+      foodId: item.foodId,
+      foodName: food?.name || "Aliment",
+      kcal: imp.kcal,
+      co2g: imp.co2g,
+    };
+  });
+}
+
+/**
+ * Bar length is that food’s share of the meal (kcal or CO₂, depending on the défi).
+ * @param {{ foodId: string, foodName?: string, kcal: number, co2g: number }[]} items
+ * @returns {FoodShare[]}
+ */
+function foodShares(items) {
+  const energy = state.mode === "energie";
+  /** @type {{ name: string, hue: string, value: number }[]} */
+  const rows = [];
+  for (const item of items) {
+    if (String(item.foodId).startsWith("rien:")) continue;
+    const value = energy ? item.kcal : item.co2g;
+    if (!(value > 0)) continue;
+    const food = FOODS.find((f) => f.id === item.foodId);
+    rows.push({
+      name: item.foodName || food?.name || "Aliment",
+      hue: food?.hue || "#6a7a72",
+      value,
+    });
+  }
+  rows.sort((a, b) => b.value - a.value);
+  const total = rows.reduce((sum, row) => sum + row.value, 0);
+  if (!(total > 0)) return [];
+  return rows.map((row) => ({
+    name: row.name,
+    hue: barColor(row.hue),
+    width: (row.value / total) * 100,
+    text: energy ? `${Math.round(row.value)} kcal` : fmtCo2(row.value),
+  }));
+}
+
+/** Near-white food colors disappear on the track; darken only those. */
+function barColor(hue) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hue)) return "#6a7a72";
+  const n = Number.parseInt(hue.slice(1), 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  if (lum < 0.93) return hue;
+  const shade = (channel) => Math.round(channel * 0.55).toString(16).padStart(2, "0");
+  return `#${shade(r)}${shade(g)}${shade(b)}`;
 }
 
 /** @param {string} categoryId */
