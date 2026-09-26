@@ -843,10 +843,6 @@ legend {
   color: var(--muted);
 }
 
-.weigh-links {
-  margin-bottom: 0.25rem;
-}
-
 .result-metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

@@ -497,9 +497,6 @@ function viewWeigh() {
     <p class="live-impact ${imp ? "" : "is-empty"}">
       ${imp ? liveImpactHtml(imp) : "Entrez le poids pour voir l’impact"}
     </p>
-    <div class="weigh-links">
-      <a class="btn ghost" href="${import.meta.env.BASE_URL}balance.html" target="_blank" rel="noopener">Aide lecture balance (caméra)</a>
-    </div>
   `;
 
   const input = /** @type {HTMLInputElement} */ (panel.querySelector("#grams-input"));
