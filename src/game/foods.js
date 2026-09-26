@@ -366,5 +366,3 @@ export function impactFor(food, grams) {
   };
 }
 
-/** Objectif calories repas de midi (indicatif) */
-export const KCAL_TARGET = 550;

@@ -18,6 +18,8 @@ const STORAGE_KEY = "assiette-lab-scores-v2";
  * @property {MealItem[]} items
  * @property {number} totalCo2g
  * @property {number} totalKcal
+ * @property {number} [targetKcal]
+ * @property {string} [levelId]
  * @property {number} score
  * @property {number} at
  */
@@ -83,6 +85,8 @@ export function addScore(entry) {
     items: entry.items,
     totalCo2g: entry.totalCo2g,
     totalKcal: entry.totalKcal,
+    targetKcal: entry.targetKcal,
+    levelId: entry.levelId,
     score,
     at: Date.now(),
   };

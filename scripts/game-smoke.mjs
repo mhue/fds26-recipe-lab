@@ -1,4 +1,5 @@
-import { CATEGORIES, FOODS, impactFor, KCAL_TARGET } from "../src/game/foods.js";
+import { CATEGORIES, FOODS, impactFor } from "../src/game/foods.js";
+import { lunchKcal } from "../src/game/levels.js";
 import { computeScore } from "../src/game/teams.js";
 import { NUTRISCORE_GRADES, NUTRISCORE_QUIZ } from "../src/game/nutriscore.js";
 import { formatGrams, parseScaleLine } from "../src/game/usbScale.js";
@@ -22,8 +23,13 @@ if (B.co2g < L.co2g * 10) {
   process.exit(1);
 }
 
-if (FOODS.length < 20 || typeof KCAL_TARGET !== "number") {
-  console.error("catalog unexpected", FOODS.length, KCAL_TARGET);
+if (FOODS.length < 20) {
+  console.error("catalog unexpected", FOODS.length);
+  process.exit(1);
+}
+
+if (lunchKcal("cp") !== 578 || lunchKcal("cm2") !== 718) {
+  console.error("lunch targets", lunchKcal("cp"), lunchKcal("cm2"));
   process.exit(1);
 }
 
@@ -52,16 +58,23 @@ if (added.some((id) => !FOODS.some((f) => f.id === id)) || CATEGORIES.length !==
   process.exit(1);
 }
 
-const low = computeScore({ mode: "climat", totalCo2g: 400, totalKcal: 500, targetKcal: KCAL_TARGET });
-const mid = computeScore({ mode: "climat", totalCo2g: 900, totalKcal: 500, targetKcal: KCAL_TARGET });
-const heavy = computeScore({ mode: "climat", totalCo2g: 3500, totalKcal: 500, targetKcal: KCAL_TARGET });
+const low = computeScore({ mode: "climat", totalCo2g: 400, totalKcal: 500, targetKcal: 578 });
+const mid = computeScore({ mode: "climat", totalCo2g: 900, totalKcal: 500, targetKcal: 578 });
+const heavy = computeScore({ mode: "climat", totalCo2g: 3500, totalKcal: 500, targetKcal: 578 });
 if (!(low > mid && mid > heavy && heavy > 0 && low < 1000)) {
   console.error("climat score order", { low, mid, heavy });
   process.exit(1);
 }
 // Ancien bug : 1000 − grammes → 0 dès 1 kg CO₂e
-if (computeScore({ mode: "climat", totalCo2g: 1200, totalKcal: 500, targetKcal: KCAL_TARGET }) <= 0) {
+if (computeScore({ mode: "climat", totalCo2g: 1200, totalKcal: 500, targetKcal: 578 }) <= 0) {
   console.error("climat score still collapses above 1 kg");
+  process.exit(1);
+}
+
+const closeEnergy = computeScore({ mode: "energie", totalCo2g: 0, totalKcal: 600, targetKcal: 550 });
+const farEnergy = computeScore({ mode: "energie", totalCo2g: 0, totalKcal: 450, targetKcal: 550 });
+if (!(closeEnergy > farEnergy)) {
+  console.error("energy gap should reward the closer plate", closeEnergy, farEnergy);
   process.exit(1);
 }
 
@@ -97,4 +110,4 @@ if (formatGrams(14.85) !== "14.9" || formatGrams(120) !== "120") {
   process.exit(1);
 }
 
-console.log("game-smoke ok", { foods: FOODS.length, kcalTarget: KCAL_TARGET });
+console.log("game-smoke ok", { foods: FOODS.length, lunchCp: lunchKcal("cp") });

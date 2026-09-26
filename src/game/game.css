@@ -126,24 +126,14 @@ body {
 
 .home-view {
   position: relative;
-  min-height: min(78dvh, 720px);
   display: grid;
-  align-content: end;
-  gap: 1.25rem;
-  padding: 1rem 0 0.5rem;
+  align-content: start;
+  gap: 1.1rem;
+  padding: 0.4rem 0 0.5rem;
 }
 
 .hero-plane {
-  position: absolute;
-  inset: 0 -4% auto;
-  height: min(58dvh, 420px);
-  border-radius: 0 0 42% 42% / 0 0 18% 18%;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 40%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 500'%3E%3Crect fill='%231f5c48' width='800' height='500'/%3E%3Cpath fill='%232f7a5c' d='M0 280c80-40 140-90 220-80s140 70 220 60 140-80 220-70 100 50 140 40v270H0z'/%3E%3Ccircle fill='%23f2c14e' cx='640' cy='110' r='48'/%3E%3Cpath fill='%23e8f0ea' d='M120 340h180l-20 90H140z'/%3E%3Cellipse fill='%23c45c5c' cx='210' cy='330' rx='34' ry='28'/%3E%3Cellipse fill='%23e8c547' cx='290' cy='345' rx='40' ry='22'/%3E%3C/svg%3E")
-      center / cover no-repeat;
-  box-shadow: var(--shadow);
-  animation: drift 12s ease-in-out infinite alternate;
+  display: none;
 }
 
 @keyframes drift {
@@ -158,8 +148,15 @@ body {
 .hero-copy {
   position: relative;
   z-index: 1;
-  padding: 1rem 0.2rem;
-  max-width: 34rem;
+  padding: 1.15rem 1.2rem 1.3rem;
+  border-radius: 22px;
+  overflow: hidden;
+  color: #f7f3ea;
+  background:
+    linear-gradient(90deg, rgba(16, 52, 40, 0.55) 0%, rgba(16, 52, 40, 0.15) 58%, transparent 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 500'%3E%3Crect fill='%231f5c48' width='800' height='500'/%3E%3Cpath fill='%232f7a5c' d='M0 280c80-40 140-90 220-80s140 70 220 60 140-80 220-70 100 50 140 40v270H0z'/%3E%3Ccircle fill='%23f2c14e' cx='640' cy='110' r='48'/%3E%3Cpath fill='%23e8f0ea' d='M120 340h180l-20 90H140z'/%3E%3Cellipse fill='%23c45c5c' cx='210' cy='330' rx='34' ry='28'/%3E%3Cellipse fill='%23e8c547' cx='290' cy='345' rx='40' ry='22'/%3E%3C/svg%3E")
+      right top / cover no-repeat;
+  box-shadow: var(--shadow);
 }
 
 .eyebrow {
@@ -168,21 +165,22 @@ body {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 0.78rem;
-  color: var(--accent-2);
+  color: #f2c14e;
 }
 
 .hero-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(2.6rem, 9vw, 4.2rem);
+  font-size: clamp(2.2rem, 7vw, 3.3rem);
   line-height: 0.95;
   letter-spacing: -0.03em;
+  color: #f7f3ea;
 }
 
 .hero-lead {
-  margin: 0.75rem 0 1.1rem;
-  font-size: 1.08rem;
-  color: var(--ink);
+  margin: 0.65rem 0 0;
+  font-size: 1.05rem;
+  color: rgba(247, 243, 234, 0.92);
   max-width: 28rem;
 }
 
@@ -220,6 +218,113 @@ body {
 .home-cards span {
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.level-picker,
+.activity-list {
+  position: relative;
+  z-index: 1;
+}
+
+.level-picker {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.level-target {
+  margin: 0.55rem 0 0;
+  font-weight: 700;
+}
+
+.activity-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.activity-card {
+  text-align: left;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 18px;
+  padding: 0.95rem 1rem;
+  display: grid;
+  gap: 0.25rem;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  box-shadow: var(--shadow);
+}
+
+.activity-card strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.activity-card span {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.challenge-note {
+  margin: 0;
+  font-weight: 700;
+}
+
+.goal-bar {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.goal-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.92rem;
+}
+
+.goal-track {
+  position: relative;
+  height: 1.05rem;
+  border-radius: 999px;
+  background: rgba(28, 42, 36, 0.08);
+  overflow: hidden;
+}
+
+.goal-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2f8f6a, #1a6f8c);
+}
+
+.goal-bar.is-kcal .goal-track i {
+  background: linear-gradient(90deg, #c56a2d, #f2c14e);
+}
+
+.goal-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--ink);
+  border-radius: 2px;
+}
+
+.goal-caption {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.goal-bar.is-compact .goal-track {
+  height: 0.55rem;
+}
+
+.goal-bar.is-compact .goal-caption,
+.goal-bar.is-compact .goal-top {
+  font-size: 0.78rem;
 }
 
 @media (max-width: 680px) {
@@ -542,9 +647,25 @@ legend {
   padding: 0.7rem 0.8rem;
 }
 
+.rank-item {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.rank-item > .rank-n,
+.rank-item > .rank-dot,
+.rank-item > .rank-score {
+  margin-top: 0.15rem;
+}
+
 .plate-item div,
 .rank-item div {
   display: grid;
+}
+
+.rank-item div > span {
+  color: var(--muted);
+  font-size: 0.88rem;
 }
 
 .plate-item span:last-child,
@@ -688,7 +809,7 @@ legend {
 
 .result-metrics {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.55rem;
 }
 

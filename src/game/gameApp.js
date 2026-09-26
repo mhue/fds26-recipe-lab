@@ -1,10 +1,10 @@
 import {
   CATEGORIES,
   FOODS,
-  KCAL_TARGET,
   foodImage,
   impactFor,
 } from "./foods.js";
+import { SCHOOL_LEVELS, levelById, lunchKcal } from "./levels.js";
 import {
   NUTRISCORE_GRADES,
   NUTRISCORE_QUIZ,
@@ -27,6 +27,7 @@ const app = document.getElementById("app");
 /** @type {{
  *   screen: Screen,
  *   mode: Mode,
+ *   levelId: import('./levels.js').LevelId,
  *   boardFilter: BoardFilter,
  *   teamName: string,
  *   teamColor: string,
@@ -41,7 +42,8 @@ const app = document.getElementById("app");
  * }} */
 const state = {
   screen: "home",
-  mode: "climat",
+  mode: "energie",
+  levelId: "cp",
   boardFilter: "all",
   teamName: "",
   teamColor: TEAM_COLORS[0].hex,
@@ -56,8 +58,8 @@ const state = {
 };
 
 const MODE_LABEL = {
-  climat: "Défi planète (moins de CO₂)",
-  energie: "Défi énergie (calories)",
+  climat: "Défi planète",
+  energie: "Défi apports énergétiques",
 };
 
 const MODE_SHORT = {
@@ -144,7 +146,7 @@ function header() {
 
   const nav = el("nav", { class: "top-nav", "aria-label": "Navigation" });
   nav.append(
-    navBtn("Défi", () => go(state.teamName ? "compose" : "setup")),
+    navBtn("Défi", () => go(state.teamName ? "compose" : "home")),
     navBtn("Classement", () => go("board")),
     navBtn("Nutri-Score", () => go("nutri")),
   );
@@ -160,32 +162,71 @@ function navBtn(label, onClick) {
 }
 
 function viewHome() {
+  const level = currentLevel();
+  const target = lunchKcal(level.id);
   const v = el("section", { class: "view home-view" });
   v.innerHTML = `
     <div class="hero-plane" aria-hidden="true"></div>
     <div class="hero-copy">
       <p class="eyebrow">Fête de la science</p>
       <h1 class="hero-title">Assiette Lab</h1>
-      <p class="hero-lead">Composez un repas de midi, pesez les aliments, découvrez le CO₂ et les calories — en équipe.</p>
-      <div class="hero-actions">
-        <button type="button" class="btn primary" data-act="start">Lancer le défi</button>
-        <button type="button" class="btn ghost" data-act="nutri">Atelier Nutri-Score</button>
-      </div>
+      <p class="hero-lead">Trois activités séparées, pour ne pas mélanger les calories et le CO₂.</p>
     </div>
-    <ul class="home-cards">
-      <li><strong>Pesée</strong><span>Balance USB ou saisie des grammes</span></li>
-      <li><strong>Agribalyse</strong><span>Données CO₂ ADEME</span></li>
-      <li><strong>Équipes</strong><span>Classement en direct</span></li>
-    </ul>
+    <fieldset class="level-picker">
+      <legend>Niveau de la classe</legend>
+      <div class="chip-row" role="radiogroup" aria-label="Niveau">
+        ${SCHOOL_LEVELS.map(
+          (item) =>
+            `<button type="button" class="chip ${state.levelId === item.id ? "is-on" : ""}" data-level="${item.id}">${item.label}</button>`,
+        ).join("")}
+      </div>
+      <p class="level-target">Cible du défi énergie, ${level.label} (${level.age} ans) : <strong>${target} kcal</strong> au déjeuner.</p>
+    </fieldset>
+    <div class="activity-list">
+      <button type="button" class="activity-card" data-act="energie">
+        <strong>Défi apports énergétiques</strong>
+        <span>Ni trop, ni trop peu : juste les ${target} kcal du niveau. Pour les plus jeunes.</span>
+      </button>
+      <button type="button" class="activity-card" data-act="nutri">
+        <strong>Atelier Nutri-Score</strong>
+        <span>La lettre sur l’emballage. On ne parle pas de CO₂.</span>
+      </button>
+      <button type="button" class="activity-card" data-act="climat">
+        <strong>Défi planète</strong>
+        <span>Le moins de CO₂ possible. Pour les plus grands, ou s’il reste du temps.</span>
+      </button>
+    </div>
   `;
-  v.querySelector("[data-act=start]")?.addEventListener("click", () => go("setup"));
+  v.querySelectorAll("[data-level]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.levelId = /** @type {import('./levels.js').LevelId} */ (btn.getAttribute("data-level") || "cp");
+      render();
+    });
+  });
+  v.querySelector("[data-act=energie]")?.addEventListener("click", () => {
+    state.mode = "energie";
+    go("setup");
+  });
+  v.querySelector("[data-act=climat]")?.addEventListener("click", () => {
+    state.mode = "climat";
+    go("setup");
+  });
   v.querySelector("[data-act=nutri]")?.addEventListener("click", () => go("nutri"));
   return v;
 }
 
 function viewSetup() {
+  const level = currentLevel();
+  const target = lunchKcal(level.id);
   const v = el("section", { class: "view setup-view" });
-  v.appendChild(titleBlock("Préparer l’équipe", "Choisissez le défi, puis un nom d’équipe."));
+  v.appendChild(
+    titleBlock(
+      MODE_LABEL[state.mode],
+      state.mode === "energie"
+        ? "Le but est de manger juste ce qu’il faut : ni trop, ni trop peu."
+        : "Le but est d’émettre le moins de CO₂ possible.",
+    ),
+  );
 
   const form = el("form", { class: "setup-form" });
   form.addEventListener("submit", (e) => {
@@ -199,12 +240,19 @@ function viewSetup() {
   });
 
   form.innerHTML = `
-    <fieldset>
-      <legend>Type de défi</legend>
-      <div class="chip-row" role="radiogroup" aria-label="Défi">
-        ${modeChip("climat", "Planète · moins de CO₂")}
-        ${modeChip("energie", "Énergie · viser les calories")}
+    <fieldset class="level-picker">
+      <legend>Niveau</legend>
+      <div class="chip-row" role="radiogroup" aria-label="Niveau">
+        ${SCHOOL_LEVELS.map(
+          (item) =>
+            `<button type="button" class="chip ${state.levelId === item.id ? "is-on" : ""}" data-level="${item.id}">${item.label}</button>`,
+        ).join("")}
       </div>
+      <p class="level-target">${
+        state.mode === "energie"
+          ? `${level.label}, ${level.age} ans : environ ${level.dailyKcal.toLocaleString("fr-FR")} kcal par jour. Le déjeuner en prend 35 %, soit <strong>${target} kcal</strong>.`
+          : `Classe de ${level.label}. Ici on ne compte que le CO₂.`
+      }</p>
     </fieldset>
     <fieldset>
       <legend>Couleur d’équipe</legend>
@@ -223,9 +271,9 @@ function viewSetup() {
     <button type="submit" class="btn primary wide">Composer le repas</button>
   `;
 
-  form.querySelectorAll("[data-mode]").forEach((btn) => {
+  form.querySelectorAll("[data-level]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      state.mode = /** @type {Mode} */ (btn.getAttribute("data-mode"));
+      state.levelId = /** @type {import('./levels.js').LevelId} */ (btn.getAttribute("data-level") || "cp");
       go("setup");
     });
   });
@@ -238,10 +286,6 @@ function viewSetup() {
 
   v.appendChild(form);
   return v;
-}
-
-function modeChip(id, label) {
-  return `<button type="button" class="chip ${state.mode === id ? "is-on" : ""}" data-mode="${id}">${label}</button>`;
 }
 
 function viewCompose() {
@@ -258,6 +302,9 @@ function viewCompose() {
     </div>
   `;
   v.appendChild(head);
+  const note = el("p", { class: "challenge-note" });
+  note.textContent = challengeNote();
+  v.appendChild(note);
   v.appendChild(meterBar(totals));
 
   const missing = CATEGORIES.filter((c) => !categoryChosen(c.id));
@@ -295,7 +342,7 @@ function viewCompose() {
           <img class="food-thumb" src="${foodImage(row.food)}" alt="" width="48" height="48" />
           <div>
             <strong>${escapeHtml(row.food.name)}</strong>
-            <span>${row.item.grams} g · ${fmtCo2(imp.co2g)} · ${Math.round(imp.kcal)} kcal</span>
+            <span>${portionLine(row.item.grams, imp)}</span>
           </div>
         `;
         const rm = el("button", { type: "button", class: "icon-btn", "aria-label": "Retirer" });
@@ -426,11 +473,7 @@ function viewWeigh() {
         .join("")}
     </div>
     <p class="live-impact ${imp ? "" : "is-empty"}">
-      ${
-        imp
-          ? `<strong>${fmtCo2(imp.co2g)}</strong> de CO₂ · <strong>${Math.round(imp.kcal)} kcal</strong>`
-          : "Entrez le poids pour voir l’impact"
-      }
+      ${imp ? liveImpactHtml(imp) : "Entrez le poids pour voir l’impact"}
     </p>
     <div class="weigh-links">
       <a class="btn ghost" href="${import.meta.env.BASE_URL}balance.html" target="_blank" rel="noopener">Aide lecture balance (caméra)</a>
@@ -444,9 +487,7 @@ function viewWeigh() {
     const g = parseGrams(state.weighDraft);
     const next = g > 0 ? impactFor(food, g) : null;
     liveEl.classList.toggle("is-empty", !next);
-    liveEl.innerHTML = next
-      ? `<strong>${fmtCo2(next.co2g)}</strong> de CO₂ · <strong>${Math.round(next.kcal)} kcal</strong>`
-      : "Entrez le poids pour voir l’impact";
+    liveEl.innerHTML = next ? liveImpactHtml(next) : "Entrez le poids pour voir l’impact";
   };
   input.addEventListener("input", refreshLive);
 
@@ -513,7 +554,8 @@ function confirmWeigh(food) {
 
 function viewResult() {
   const totals = plateTotals();
-  const target = KCAL_TARGET;
+  const target = lunchKcal(state.levelId);
+  const level = currentLevel();
   if (!state.resultSaved) {
     state.lastResult = addScore({
       name: state.teamName,
@@ -541,6 +583,7 @@ function viewResult() {
       totalCo2g: totals.co2g,
       totalKcal: totals.kcal,
       targetKcal: target,
+      levelId: level.id,
     });
     state.resultSaved = true;
   }
@@ -551,6 +594,7 @@ function viewResult() {
   }
 
   const v = el("section", { class: "view result-view" });
+  const gap = Math.abs(Math.round(totals.kcal) - target);
   const verdict =
     state.mode === "climat"
       ? totals.co2g < 400
@@ -558,27 +602,46 @@ function viewResult() {
         : totals.co2g < 900
           ? "Bien joué — on peut encore alléger le CO₂."
           : "Fort impact : essayez plus de légumes et de légumineuses."
-      : Math.abs(totals.kcal - target) < 80
-        ? "Pile dans la cible calories !"
+      : gap <= 40
+        ? `Juste ce qu’il faut. Écart de ${gap} kcal.`
         : totals.kcal < target
-          ? "Un peu juste en énergie — ajoutez un accompagnement ou du pain ?"
-          : "Un peu au-dessus — réduisez une portion.";
+          ? `Un peu trop peu. Écart de ${gap} kcal : un écart plus petit serait meilleur.`
+          : `Un peu trop. Écart de ${gap} kcal : un écart plus petit serait meilleur.`;
+
+  const bar =
+    state.mode === "energie"
+      ? goalBarHtml(energyGoal(totals.kcal, target))
+      : goalBarHtml(climateGoal(totals.co2g));
 
   v.innerHTML = `
     <p class="team-pill" style="--team:${state.teamColor}"><span></span>${escapeHtml(state.teamName)}</p>
     <h2>Résultat du repas</h2>
     <p class="verdict">${verdict}</p>
+    ${
+      state.mode === "energie"
+        ? `<p class="challenge-note">${level.label}, ${level.age} ans : la cible du déjeuner est ${target} kcal. Ni trop, ni trop peu. Un plateau à 50 kcal de la cible vaut mieux qu’un plateau à 100 kcal, au-dessus ou en dessous.</p>`
+        : `<p class="challenge-note">Défi planète : moins de CO₂, mieux c’est.</p>`
+    }
+    ${bar}
     <div class="result-metrics">
-      <div class="metric">
+      ${
+        state.mode === "climat"
+          ? `<div class="metric">
         <span class="metric-label">CO₂</span>
         <strong class="metric-value">${fmtCo2(totals.co2g)}</strong>
         <span class="metric-hint">Agribalyse® ADEME</span>
-      </div>
-      <div class="metric">
+      </div>`
+          : `<div class="metric">
         <span class="metric-label">Calories</span>
         <strong class="metric-value">${Math.round(totals.kcal)} <small>kcal</small></strong>
         <span class="metric-hint">cible ${target} kcal</span>
       </div>
+      <div class="metric">
+        <span class="metric-label">Écart</span>
+        <strong class="metric-value">${gap} <small>kcal</small></strong>
+        <span class="metric-hint">plus petit, mieux c’est</span>
+      </div>`
+      }
       <div class="metric">
         <span class="metric-label">Score</span>
         <strong class="metric-value">${saved.score}</strong>
@@ -603,7 +666,7 @@ function viewResult() {
         <span>${
           rien
             ? "Choix : rien"
-            : `${item.grams} g · ${fmtCo2(item.co2g)} · ${Math.round(item.kcal)} kcal`
+            : portionLine(item.grams, { co2g: item.co2g, kcal: item.kcal })
         }</span>
       </div>
     `;
@@ -681,12 +744,18 @@ function viewBoard() {
     const list = el("ol", { class: "rank-list" });
     rows.forEach((row, i) => {
       const li = el("li", { class: "rank-item" });
+      const rowTarget = row.targetKcal || lunchKcal(row.levelId || state.levelId);
+      const bar =
+        row.mode === "energie"
+          ? goalBarHtml({ ...energyGoal(row.totalKcal, rowTarget), compact: true })
+          : goalBarHtml({ ...climateGoal(row.totalCo2g), compact: true });
       li.innerHTML = `
         <span class="rank-n">${i + 1}</span>
         <span class="rank-dot" style="--team:${row.color}"></span>
         <div>
           <strong>${escapeHtml(row.name)}</strong>
-          <span>${MODE_SHORT[row.mode] || row.mode} · ${fmtCo2(row.totalCo2g)} · ${Math.round(row.totalKcal)} kcal</span>
+          <span>${MODE_SHORT[row.mode] || row.mode}</span>
+          ${bar}
         </div>
         <strong class="rank-score">${row.score}</strong>
       `;
@@ -793,22 +862,89 @@ function viewNutri() {
 }
 
 function meterBar(totals) {
-  const target = KCAL_TARGET;
-  const co2Max = 1500;
-  const co2Pct = Math.min(100, (totals.co2g / co2Max) * 100);
-  const kcalPct = Math.min(100, (totals.kcal / (target * 1.4)) * 100);
-  const bar = el("div", { class: "meters" });
-  bar.innerHTML = `
-    <div class="meter">
-      <div class="meter-top"><span>CO₂</span><strong>${fmtCo2(totals.co2g)}</strong></div>
-      <div class="meter-track"><i style="width:${co2Pct}%"></i></div>
-    </div>
-    <div class="meter">
-      <div class="meter-top"><span>Calories</span><strong>${Math.round(totals.kcal)} / ${target}</strong></div>
-      <div class="meter-track kcal"><i style="width:${kcalPct}%"></i></div>
+  const target = lunchKcal(state.levelId);
+  const wrap = el("div", { class: "meters" });
+  wrap.innerHTML =
+    state.mode === "energie"
+      ? goalBarHtml(energyGoal(totals.kcal, target))
+      : goalBarHtml(climateGoal(totals.co2g));
+  return wrap;
+}
+
+function currentLevel() {
+  return levelById(state.levelId);
+}
+
+function challengeNote() {
+  const level = currentLevel();
+  const target = lunchKcal(level.id);
+  if (state.mode === "energie") {
+    return `${level.label}, ${level.age} ans : le déjeuner vise ${target} kcal. Ni trop, ni trop peu. L’écart à la cible compte, pas seulement d’être au-dessus ou en dessous.`;
+  }
+  return "Défi planète : on regarde le CO₂. Moins, c’est mieux.";
+}
+
+/**
+ * @param {number} grams
+ * @param {{ co2g: number, kcal: number }} imp
+ */
+function portionLine(grams, imp) {
+  if (state.mode === "energie") return `${grams} g · ${Math.round(imp.kcal)} kcal`;
+  return `${grams} g · ${fmtCo2(imp.co2g)}`;
+}
+
+/** @param {{ co2g: number, kcal: number }} imp */
+function liveImpactHtml(imp) {
+  if (state.mode === "energie") return `<strong>${Math.round(imp.kcal)} kcal</strong>`;
+  return `<strong>${fmtCo2(imp.co2g)}</strong>`;
+}
+
+/** @param {number} kcal @param {number} target */
+function energyGoal(kcal, target) {
+  const rounded = Math.round(kcal);
+  const gap = Math.abs(rounded - target);
+  const scale = Math.max(target * 1.5, rounded, 1);
+  return {
+    kind: "kcal",
+    label: "Calories",
+    valueText: `${rounded} kcal`,
+    fill: Math.min(100, (rounded / scale) * 100),
+    mark: (target / scale) * 100,
+    caption: `Cible ${target} kcal · écart ${gap} kcal`,
+  };
+}
+
+/** @param {number} co2g */
+function climateGoal(co2g) {
+  const scale = 4000;
+  return {
+    kind: "co2",
+    label: "CO₂",
+    valueText: fmtCo2(co2g),
+    fill: Math.min(100, (co2g / scale) * 100),
+    mark: null,
+    caption: "Plus la barre est courte, mieux c’est.",
+  };
+}
+
+/**
+ * @param {{ kind: string, label: string, valueText: string, fill: number, mark: number|null, caption: string, compact?: boolean }} goal
+ */
+function goalBarHtml(goal) {
+  const mark =
+    goal.mark == null
+      ? ""
+      : `<b class="goal-mark" style="left:${goal.mark.toFixed(1)}%" title="Cible"></b>`;
+  return `
+    <div class="goal-bar ${goal.compact ? "is-compact" : ""} ${goal.kind === "kcal" ? "is-kcal" : "is-co2"}">
+      <div class="goal-top"><span>${escapeHtml(goal.label)}</span><strong>${escapeHtml(goal.valueText)}</strong></div>
+      <div class="goal-track" aria-hidden="true">
+        <i style="width:${goal.fill.toFixed(1)}%"></i>
+        ${mark}
+      </div>
+      <p class="goal-caption">${escapeHtml(goal.caption)}</p>
     </div>
   `;
-  return bar;
 }
 
 /** @param {string} categoryId */

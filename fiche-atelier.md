@@ -56,7 +56,7 @@ Protocole :
 
 - Le CO₂ d’un aliment = impact **du champ à l’assiette** (Agribalyse® ADEME).
 - Comparer 100 g de steak (≈ **3,4 kg CO₂e**) et 100 g de lentilles (≈ **66 g CO₂e**) : environ **50 fois** plus pour le steak. Sans culpabiliser : on peut diminuer ou remplacer.
-- Équipe, nom, **Défi planète**. Repas par composants : entrée, protéines, deux accompagnements, laitage, dessert, pain, extras. « Rien » est possible : le repas peut être peu équilibré.
+- Depuis l’accueil : niveau de la classe, puis **Défi planète**. Repas par composants : entrée, protéines, deux accompagnements, laitage, dessert, pain, extras. « Rien » est possible : le repas peut être peu équilibré.
 - Peser chaque aliment. Moins de **400 g CO₂e** = léger ; au-delà de **900 g** = fort impact.
 - La nature de l’aliment compte (surtout la protéine), et la quantité aussi.
 
@@ -65,14 +65,15 @@ Video : https://mhue.github.io/fds26-recipe-lab/
 
 ### Partie 3 — Jeu nutrition
 
-Objectif : Composer un déjeuner qui vise **~550 kcal**.
+Objectif : Composer un déjeuner proche de la cible du niveau (35 % des besoins du jour).
 
 Matériel : tablette · balance · aliments par familles · illustrations n°4 et n°5
 
 Protocole :
 
 - Les calories = l’énergie du repas. On choisit par composant, y compris des aliments moins favorables.
-- **Défi énergie**. Viser 550 kcal. « Rien » est possible sur un composant.
+- **Défi apports énergétiques**. Choisir le niveau (CP = 6 ans … CM2 = 10 ans). La cible se met à jour : 578 kcal en CP, 718 kcal en CM2.
+- Le but : ni trop, ni trop peu. On compare l’**écart** à la cible. 50 kcal d’écart vaut mieux que 100 kcal, que le plateau soit au-dessus ou en dessous.
 - Sans accompagnement ni pain → trop léger ; fromage, frites, gâteau et chips → ça monte vite ; légumes → peu de calories.
 - Ce n’est pas le même classement que le défi CO₂ : ce n’est pas la même question.
 

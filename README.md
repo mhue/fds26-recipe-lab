@@ -24,18 +24,21 @@ Les scores restent dans le navigateur de chaque appareil (`localStorage`) : le c
 
 ## Déroulement du jeu
 
-1. Choisir le type de défi
+1. Choisir le **niveau** (CP à CM2), puis une activité : défi planète, défi apports énergétiques, ou atelier Nutri-Score
 2. Nommer l’**équipe**
 3. Composer le repas par composants (entrée, protéines, accompagnements, laitage, dessert, pain, extras). Chaque composant peut être un aliment ou « Rien » : le repas peut être peu équilibré.
 4. **Peser** chaque aliment sur une balance et saisir les grammes (pavé numérique)
-5. Voir le total **CO₂e** + **kcal**, puis le **classement**
+5. Voir le résultat du défi choisi (barre + écart pour l’énergie, barre de CO₂ pour la planète), puis le **classement**
 
-### Deux défis
+### Trois activités
 
-| Défi | Objectif |
-|------|----------|
+| Activité | Objectif |
+|----------|----------|
 | **Planète** | Minimiser le CO₂ du repas |
-| **Énergie** | Approcher la cible calories (≈ 550 kcal) |
+| **Apports énergétiques** | Se rapprocher de la cible du déjeuner, selon le niveau (35 % des besoins journaliers) |
+| **Nutri-Score** | Lire la lettre sur l’emballage |
+
+Cibles déjeuner (moyenne filles et garçons, Collège national des pédiatres universitaires) : CP 578 kcal, CE1 613, CE2 648, CM1 683, CM2 718. Le score énergie dépend de l’écart à cette cible.
 
 Les scores sont stockés dans le navigateur (`localStorage`) pour animer un challenge sur un stand.
 
