@@ -216,9 +216,40 @@ body {
   padding: 0;
 }
 
+.level-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem 1.25rem;
+  flex-wrap: wrap;
+}
+
 .level-target {
   margin: 0.55rem 0 0;
   font-weight: 700;
+}
+
+.home-view .level-target {
+  margin: 0;
+  display: grid;
+  justify-items: end;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.level-kcal {
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 6vw, 2.9rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.home-view .level-target span {
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--muted);
+  letter-spacing: 0.01em;
 }
 
 .activity-list {

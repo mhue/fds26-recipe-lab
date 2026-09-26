@@ -172,13 +172,15 @@ function viewHome() {
     </div>
     <fieldset class="level-picker">
       <legend>Niveau de la classe</legend>
-      <div class="chip-row" role="radiogroup" aria-label="Niveau">
-        ${SCHOOL_LEVELS.map(
-          (item) =>
-            `<button type="button" class="chip ${state.levelId === item.id ? "is-on" : ""}" data-level="${item.id}">${item.label}</button>`,
-        ).join("")}
+      <div class="level-row">
+        <div class="chip-row" role="radiogroup" aria-label="Niveau">
+          ${SCHOOL_LEVELS.map(
+            (item) =>
+              `<button type="button" class="chip ${state.levelId === item.id ? "is-on" : ""}" data-level="${item.id}">${item.label}</button>`,
+          ).join("")}
+        </div>
+        <p class="level-target"><strong class="level-kcal">${target}</strong><span>kcal au déjeuner</span></p>
       </div>
-      <p class="level-target">Cible du défi énergie : <strong>${target} kcal</strong> au déjeuner.</p>
     </fieldset>
     <div class="activity-list">
       <button type="button" class="activity-card" data-act="energie">
@@ -203,11 +205,11 @@ function viewHome() {
       v.querySelectorAll("[data-level]").forEach((chip) => {
         chip.classList.toggle("is-on", chip === btn);
       });
-      const target = lunchKcal(state.levelId);
-      const line = v.querySelector(".level-target");
-      if (line) line.innerHTML = `Cible du défi énergie : <strong>${target} kcal</strong> au déjeuner.`;
+      const nextTarget = lunchKcal(state.levelId);
+      const kcal = v.querySelector(".level-kcal");
+      if (kcal) kcal.textContent = String(nextTarget);
       const energy = v.querySelector("[data-act=energie] span");
-      if (energy) energy.textContent = `Ni trop, ni trop peu : juste les ${target} kcal du niveau.`;
+      if (energy) energy.textContent = `Ni trop, ni trop peu : juste les ${nextTarget} kcal du niveau.`;
     });
   });
   v.querySelector("[data-act=energie]")?.addEventListener("click", () => {
