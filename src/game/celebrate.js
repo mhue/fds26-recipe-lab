@@ -18,6 +18,9 @@ const COLORS = [
 
 const SPARK_COLORS = ["#f2c14e", "#fff6d8", "#fff", "#3aaa78", "#e07a3d"];
 
+/** @type {Shape[]} */
+const SHAPES = ["paper", "heart", "star", "disk"];
+
 /** @type {{ stop: () => void } | null} */
 let active = null;
 
@@ -93,9 +96,10 @@ export function startWinCelebration() {
       spin: (Math.random() - 0.5) * 2.4,
       flip: Math.random() * Math.PI * 2,
       flipSpeed: 2.2 + Math.random() * 3.2,
-      w: 9 + Math.random() * 8,
-      h: 5 + Math.random() * 5,
-      skew: 1.5 + Math.random() * 3.5,
+      w: 14 + Math.random() * 10,
+      h: 8 + Math.random() * 6,
+      skew: 2.2 + Math.random() * 4,
+      shape: SHAPES[(Math.random() * SHAPES.length) | 0],
       phase: Math.random() * Math.PI * 2,
       freq: 0.8 + Math.random() * 1.4,
       color,
@@ -189,13 +193,13 @@ export function startWinCelebration() {
         piece.y += piece.vy * dt;
         piece.angle += piece.spin * dt;
         piece.flip += piece.flipSpeed * dt;
-        if (piece.y > cssH + 28) {
-          piece.y = -16 - Math.random() * 80;
+        if (piece.y > cssH + 36) {
+          piece.y = -20 - Math.random() * 90;
           piece.x = Math.random() * cssW;
-        } else if (piece.x < -40) {
-          piece.x = cssW + 20;
-        } else if (piece.x > cssW + 40) {
-          piece.x = -20;
+        } else if (piece.x < -48) {
+          piece.x = cssW + 24;
+        } else if (piece.x > cssW + 48) {
+          piece.x = -24;
         }
         drawPiece(piece);
       }
@@ -212,15 +216,11 @@ export function startWinCelebration() {
     ctx.rotate(piece.angle);
     ctx.scale(face, 1);
     ctx.fillStyle = face >= 0 ? piece.color : piece.back;
-    const hw = piece.w / 2;
-    const hh = piece.h / 2;
-    const k = piece.skew;
     ctx.beginPath();
-    ctx.moveTo(-hw + k, -hh);
-    ctx.lineTo(hw + k, -hh);
-    ctx.lineTo(hw - k, hh);
-    ctx.lineTo(-hw - k, hh);
-    ctx.closePath();
+    if (piece.shape === "heart") traceHeart(ctx, piece.w * 0.55);
+    else if (piece.shape === "star") traceStar(ctx, piece.w * 0.58);
+    else if (piece.shape === "disk") ctx.ellipse(0, 0, piece.w * 0.46, piece.w * 0.46, 0, 0, Math.PI * 2);
+    else tracePaper(ctx, piece.w, piece.h, piece.skew);
     ctx.fill();
     ctx.restore();
   }
@@ -262,6 +262,42 @@ export function startWinCelebration() {
   active = { stop };
 }
 
+/** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h @param {number} skew */
+function tracePaper(ctx, w, h, skew) {
+  const hw = w / 2;
+  const hh = h / 2;
+  ctx.moveTo(-hw + skew, -hh);
+  ctx.lineTo(hw + skew, -hh);
+  ctx.lineTo(hw - skew, hh);
+  ctx.lineTo(-hw - skew, hh);
+  ctx.closePath();
+}
+
+/** @param {CanvasRenderingContext2D} ctx @param {number} s */
+function traceHeart(ctx, s) {
+  ctx.moveTo(0, s * 0.9);
+  ctx.bezierCurveTo(s * 0.55, s * 0.35, s * 1.15, s * 0.05, s * 0.72, -s * 0.38);
+  ctx.bezierCurveTo(s * 0.42, -s * 0.72, s * 0.08, -s * 0.48, 0, -s * 0.12);
+  ctx.bezierCurveTo(-s * 0.08, -s * 0.48, -s * 0.42, -s * 0.72, -s * 0.72, -s * 0.38);
+  ctx.bezierCurveTo(-s * 1.15, s * 0.05, -s * 0.55, s * 0.35, 0, s * 0.9);
+  ctx.closePath();
+}
+
+/** Five-point star, point up. @param {CanvasRenderingContext2D} ctx @param {number} r */
+function traceStar(ctx, r) {
+  const inner = r * 0.4;
+  for (let i = 0; i < 5; i++) {
+    const outer = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+    const mid = outer + Math.PI / 5;
+    const ox = Math.cos(outer) * r;
+    const oy = Math.sin(outer) * r;
+    if (i === 0) ctx.moveTo(ox, oy);
+    else ctx.lineTo(ox, oy);
+    ctx.lineTo(Math.cos(mid) * inner, Math.sin(mid) * inner);
+  }
+  ctx.closePath();
+}
+
 /** @param {string} hex */
 function darker(hex) {
   const n = Number.parseInt(hex.slice(1), 16);
@@ -284,11 +320,14 @@ function darker(hex) {
  * @property {number} w
  * @property {number} h
  * @property {number} skew
+ * @property {Shape} shape
  * @property {number} phase
  * @property {number} freq
  * @property {string} color
  * @property {string} back
  */
+
+/** @typedef {'paper'|'heart'|'star'|'disk'} Shape */
 
 /**
  * @typedef {object} Spark
