@@ -918,9 +918,16 @@ function liveImpactHtml(imp) {
   return `<strong>${fmtCo2(imp.co2g)}</strong>`;
 }
 
+/** “Juste” spans this many kcal either side of the target (160 kcal wide). */
+const JUSTE_HALF_KCAL = 80;
+/** “Trop peu” below that edge, and “Un peu trop” above it, each span this many kcal. */
+const ADJACENT_BAND_KCAL = 200;
+
 /**
- * Headline for the energy défi. Within 40 kcal is on target.
- * A little over, up to 100 kcal, is “un peu trop”; beyond that is “trop”.
+ * Headline for the energy défi.
+ * Within 80 kcal is “Juste”. The next 200 kcal under is “Trop peu”,
+ * the next 200 kcal over is “Un peu trop”. Further over is “Trop”;
+ * further under stays “Trop peu”, in the stronger tone.
  * @param {number} kcal
  * @param {number} target
  * @returns {{ label: string, tone: 'low'|'ok'|'high'|'over', detail: string }}
@@ -928,21 +935,29 @@ function liveImpactHtml(imp) {
 function energyVerdict(kcal, target) {
   const delta = Math.round(kcal) - target;
   const gap = Math.abs(delta);
-  if (delta < -40) {
+  const bandEnd = JUSTE_HALF_KCAL + ADJACENT_BAND_KCAL;
+  if (delta < -bandEnd) {
+    return {
+      label: "Trop peu",
+      tone: "over",
+      detail: `Écart de ${gap} kcal sous la cible de ${target} kcal.`,
+    };
+  }
+  if (delta < -JUSTE_HALF_KCAL) {
     return {
       label: "Trop peu",
       tone: "low",
       detail: `Écart de ${gap} kcal sous la cible de ${target} kcal.`,
     };
   }
-  if (delta <= 40) {
+  if (delta <= JUSTE_HALF_KCAL) {
     return {
       label: "Juste",
       tone: "ok",
       detail: `Écart de ${gap} kcal : juste ce qu’il faut.`,
     };
   }
-  if (delta <= 100) {
+  if (delta <= bandEnd) {
     return {
       label: "Un peu trop",
       tone: "high",
