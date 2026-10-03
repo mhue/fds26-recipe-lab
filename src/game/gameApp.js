@@ -17,6 +17,7 @@ import {
   rankingFor,
 } from "./teams.js";
 import { serialSupported, usbScale } from "./usbScale.js";
+import { startWinCelebration, stopCelebration } from "./celebrate.js";
 
 /** @typedef {'home'|'setup'|'compose'|'weigh'|'result'|'board'|'nutri'} Screen */
 /** @typedef {'climat'|'energie'} Mode */
@@ -96,6 +97,7 @@ function init() {
 }
 
 function render() {
+  stopCelebration();
   app.innerHTML = "";
   app.appendChild(shell());
 }
@@ -710,6 +712,8 @@ function viewResult() {
   });
   row.append(board, again, retry);
   v.appendChild(row);
+
+  if (energy?.tone === "ok") startWinCelebration();
 
   const src = el("p", { class: "source" });
   src.innerHTML =

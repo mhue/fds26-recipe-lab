@@ -1159,3 +1159,17 @@ legend {
     grid-template-columns: 1fr;
   }
 }
+
+.celebrate-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(12, 22, 18, 0.4);
+  pointer-events: none;
+}
+
+.celebrate-overlay canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
