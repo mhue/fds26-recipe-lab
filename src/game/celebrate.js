@@ -16,7 +16,19 @@ const COLORS = [
   "#c45c86",
 ];
 
-const SPARK_COLORS = ["#f2c14e", "#fff6d8", "#fff", "#3aaa78", "#e07a3d"];
+const SPARK_COLORS = [
+  "#f2c14e",
+  "#f4e27a",
+  "#fff6d8",
+  "#e85d4c",
+  "#e07a3d",
+  "#c45c86",
+  "#3aaa78",
+  "#1f7a55",
+  "#7ec8d4",
+  "#1a6f8c",
+  "#f7f3ea",
+];
 
 /** @type {Shape[]} */
 const SHAPES = ["paper", "heart", "star", "disk"];
@@ -55,11 +67,11 @@ export function startWinCelebration() {
   /** @type {Flash[]} */
   const flashes = [];
   const bursts = [
-    { at: 0.08, x: 0.28, y: 0.22, done: false },
-    { at: 0.34, x: 0.72, y: 0.18, done: false },
-    { at: 0.56, x: 0.5, y: 0.3, done: false },
+    { at: 0.12, x: 0.28, y: 0.22, done: false },
+    { at: 0.85, x: 0.72, y: 0.18, done: false },
+    { at: 1.5, x: 0.5, y: 0.3, done: false },
   ];
-  const confettiAt = 0.72;
+  const confettiAt = 1.15;
 
   resize();
   seedPieces();
@@ -96,9 +108,9 @@ export function startWinCelebration() {
       spin: (Math.random() - 0.5) * 2.4,
       flip: Math.random() * Math.PI * 2,
       flipSpeed: 2.2 + Math.random() * 3.2,
-      w: 14 + Math.random() * 10,
-      h: 8 + Math.random() * 6,
-      skew: 2.2 + Math.random() * 4,
+      w: 28 + Math.random() * 20,
+      h: 16 + Math.random() * 12,
+      skew: 4.4 + Math.random() * 8,
       shape: SHAPES[(Math.random() * SHAPES.length) | 0],
       phase: Math.random() * Math.PI * 2,
       freq: 0.8 + Math.random() * 1.4,
@@ -109,20 +121,23 @@ export function startWinCelebration() {
 
   /** @param {number} x @param {number} y */
   function spawnBurst(x, y) {
-    flashes.push({ x, y, age: 0, life: 0.42 });
-    const n = 18;
+    const ring = SPARK_COLORS[(Math.random() * SPARK_COLORS.length) | 0];
+    const core = SPARK_COLORS[(Math.random() * SPARK_COLORS.length) | 0];
+    flashes.push({ x, y, age: 0, life: 1.15, color: ring, width: 7 });
+    flashes.push({ x, y, age: 0, life: 0.85, color: core, width: 4 });
+    const n = 24;
     for (let i = 0; i < n; i++) {
       const a = (Math.PI * 2 * i) / n + Math.random() * 0.25;
-      const speed = 80 + Math.random() * 170;
+      const speed = 38 + Math.random() * 72;
       sparks.push({
         x,
         y,
         vx: Math.cos(a) * speed,
-        vy: Math.sin(a) * speed - 30,
-        life: 0.5 + Math.random() * 0.35,
+        vy: Math.sin(a) * speed - 18,
+        life: 1.25 + Math.random() * 0.7,
         age: 0,
-        size: 2 + Math.random() * 2.2,
-        color: SPARK_COLORS[i % SPARK_COLORS.length],
+        size: 5 + Math.random() * 4.5,
+        color: SPARK_COLORS[(Math.random() * SPARK_COLORS.length) | 0],
       });
     }
   }
@@ -155,9 +170,9 @@ export function startWinCelebration() {
       }
       const t = flash.age / flash.life;
       ctx.beginPath();
-      ctx.arc(flash.x, flash.y, 6 + t * 78, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(255, 236, 186, ${1 - t})`;
-      ctx.lineWidth = 2;
+      ctx.arc(flash.x, flash.y, 8 + t * 72, 0, Math.PI * 2);
+      ctx.strokeStyle = hexAlpha(flash.color, 1 - t);
+      ctx.lineWidth = flash.width;
       ctx.stroke();
     }
 
@@ -168,19 +183,22 @@ export function startWinCelebration() {
         sparks.splice(i, 1);
         continue;
       }
-      spark.vy += 260 * dt;
+      spark.vy += 110 * dt;
       spark.x += spark.vx * dt;
       spark.y += spark.vy * dt;
       const fade = 1 - spark.age / spark.life;
       ctx.globalAlpha = fade;
       ctx.strokeStyle = spark.color;
-      ctx.lineWidth = 1.7;
+      ctx.lineWidth = 4.5;
+      ctx.lineCap = "round";
       ctx.beginPath();
       ctx.moveTo(spark.x, spark.y);
-      ctx.lineTo(spark.x - spark.vx * 0.05, spark.y - spark.vy * 0.05);
+      ctx.lineTo(spark.x - spark.vx * 0.14, spark.y - spark.vy * 0.14);
       ctx.stroke();
-      ctx.fillStyle = "#fff8e4";
-      ctx.fillRect(spark.x - 1, spark.y - 1, spark.size, spark.size * 0.6);
+      ctx.fillStyle = spark.color;
+      ctx.beginPath();
+      ctx.arc(spark.x, spark.y, spark.size * 0.42, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.globalAlpha = 1;
 
@@ -193,13 +211,13 @@ export function startWinCelebration() {
         piece.y += piece.vy * dt;
         piece.angle += piece.spin * dt;
         piece.flip += piece.flipSpeed * dt;
-        if (piece.y > cssH + 36) {
-          piece.y = -20 - Math.random() * 90;
+        if (piece.y > cssH + 72) {
+          piece.y = -36 - Math.random() * 120;
           piece.x = Math.random() * cssW;
-        } else if (piece.x < -48) {
-          piece.x = cssW + 24;
-        } else if (piece.x > cssW + 48) {
-          piece.x = -24;
+        } else if (piece.x < -96) {
+          piece.x = cssW + 48;
+        } else if (piece.x > cssW + 96) {
+          piece.x = -48;
         }
         drawPiece(piece);
       }
@@ -298,6 +316,15 @@ function traceStar(ctx, r) {
   ctx.closePath();
 }
 
+/** @param {string} hex @param {number} alpha */
+function hexAlpha(hex, alpha) {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 /** @param {string} hex */
 function darker(hex) {
   const n = Number.parseInt(hex.slice(1), 16);
@@ -347,4 +374,6 @@ function darker(hex) {
  * @property {number} y
  * @property {number} age
  * @property {number} life
+ * @property {string} color
+ * @property {number} width
  */
